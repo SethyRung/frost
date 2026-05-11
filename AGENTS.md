@@ -26,7 +26,7 @@ A **project orchestrator TUI** for managing local dev services across multiple p
 
 - Entrypoint will be `src/index.ts` (or `bin/appmanager` wrapper). Confirm before changing.
 - MVP commands: `start`, `stop`, `status`, `restart` (targeting apps or whole projects).
-- No daemon mode for MVP — the TUI *is* the long-running process.
+- No daemon mode for MVP — the TUI _is_ the long-running process.
 
 ## Scope Guardrails
 
