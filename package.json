@@ -3,8 +3,12 @@
   "private": true,
   "type": "module",
   "module": "src/index.tsx",
+  "exports": {
+    ".": "./src/config/define-config.ts"
+  },
   "scripts": {
     "dev": "bun run --watch src/index.tsx",
+    "typecheck": "tsc --noEmit",
     "test": "bun test",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
