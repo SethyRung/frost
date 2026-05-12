@@ -3,7 +3,7 @@ import { findConfig, loadConfig, ConfigError } from "../../src/config/loader";
 
 const PROJECT_ROOT = import.meta.dirname.replace(/\/tests\/config$/, "");
 
-const FIXTURE_PATH = `${PROJECT_ROOT}/tests/fixtures/.frost.config.ts`;
+const FIXTURE_PATH = `${PROJECT_ROOT}/tests/fixtures/frost.config.ts`;
 const FIXTURE_DIR = `${PROJECT_ROOT}/tests/fixtures`;
 
 describe("findConfig", () => {

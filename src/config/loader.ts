@@ -10,7 +10,7 @@ export class ConfigError extends Error {
 export async function findConfig(cwd: string = process.cwd()): Promise<string | null> {
   let dir = cwd;
   while (true) {
-    const configPath = `${dir}/.frost.config.ts`;
+    const configPath = `${dir}/frost.config.ts`;
     try {
       await Bun.file(configPath).text();
       return configPath;
