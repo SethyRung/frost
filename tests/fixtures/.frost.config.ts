@@ -8,11 +8,11 @@ export default defineConfig({
       root: "./apps/web",
       apps: {
         frontend: {
-          command: "bun dev",
+          command: "bun run dev",
           cwd: "./frontend",
         },
         api: {
-          command: "bun start",
+          command: "bun run start",
           cwd: "./api",
         },
       },

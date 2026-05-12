@@ -18,5 +18,6 @@ export default defineConfig({
     ".cache",
     "dist",
     "pnpm-lock.yaml",
+    "tests/fixtures",
   ],
 });
