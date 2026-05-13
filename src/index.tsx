@@ -15,7 +15,7 @@ try {
   if (configPath) {
     config = await loadConfig(configPath);
   } else {
-    configError = "No frost.config.ts found in current or parent directories.";
+    configError = "No frost.json found in current or parent directories.";
   }
 } catch (e) {
   configError = e instanceof Error ? e.message : "Unknown config error";

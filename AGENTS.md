@@ -12,7 +12,7 @@
 - **TUI Framework**: OpenTUI React bindings (`@opentui/react`). Do NOT use Ink, Blessed, or other React TUI libraries.
 - **Process Management**: Native `Bun.spawn()`. No pm2, docker-compose, etc. Docker support is post-MVP.
 - **Language**: TypeScript + TSX. JSX transform is `react-jsx` via `@opentui/react` (`tsconfig.json`). No `import React` needed.
-- **Config**: `frost.config.ts` — executable TypeScript.
+- **Config**: `frost.json` / `frost.jsonc` — JSON/JSONC.
 - **State**: `~/.frost/state.json`.
 
 ## Developer Commands
@@ -38,16 +38,16 @@
 ## Source Layout
 
 - `src/index.tsx` — TUI entrypoint. Not exported as a library.
-- `src/config/` — `defineConfig()`, types, and loader (`findConfig` / `loadConfig`).
+- `src/config/` — config types and loader (`findConfig` / `loadConfig`).
 - `src/process/` — `ProcessManager`, `spawnApp`, log ring buffer (max 1000 lines).
 - `src/state/` — `StateStore` (JSON persistence, 500ms debounce).
 - `src/tui/` — **Empty right now**. Dashboard React components and hooks go here (see `Plan.md`).
-- `tests/` — mirrors `src/`. `tests/fixtures/frost.config.ts` is used by config loader tests.
+- `tests/` — mirrors `src/`. `tests/fixtures/frost.json` is used by config loader tests.
 
 ## Config Loader Quirks
 
-- Searches for **`frost.config.ts`** by walking up from cwd.
-- At runtime, the loader **strips all `import` lines** from the config file before evaluating it in a temporary `.mjs` with an injected `defineConfig`. Config files cannot rely on runtime imports; `import { defineConfig } from "frost"` is only for TypeScript autocompletion.
+- Searches for **`frost.json`** first (then `frost.jsonc`) by walking up from cwd.
+- Loader parses JSONC directly (comments/trailing commas supported) and validates schema; no runtime TS evaluation.
 
 ## Process Manager Quirks
 

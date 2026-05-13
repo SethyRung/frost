@@ -1,0 +1,18 @@
+{
+  "$schema": "./schemas/config.json",
+  "projects": {
+    "my-web-app": {
+      "root": "./apps/web",
+      "apps": {
+        "frontend": {
+          "command": "bun run dev",
+          "cwd": "./frontend"
+        },
+        "api": {
+          "command": "bun run start",
+          "cwd": "./api"
+        }
+      }
+    }
+  }
+}

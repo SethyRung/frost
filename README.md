@@ -37,6 +37,25 @@ tsconfig.json        # TypeScript config with @opentui/react JSX transform
 | `bun install` | Install dependencies      |
 | `bun dev`     | Run the TUI in watch mode |
 
+## Configuration
+
+Create a `frost.json` file in your project (or any parent directory):
+
+```json
+{
+  "$schema": "./schemas/config.json",
+  "projects": {
+    "my-web-app": {
+      "root": "./apps/web",
+      "apps": {
+        "frontend": { "command": "bun run dev", "cwd": "./frontend" },
+        "api": { "command": "bun run start", "cwd": "./api" }
+      }
+    }
+  }
+}
+```
+
 ## Contributing
 
 See [`AGENTS.md`](./AGENTS.md) for architecture notes, conventions, and developer guidance.

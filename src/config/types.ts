@@ -19,9 +19,11 @@ export interface ProjectConfig {
 }
 
 /**
- * Root Frost config shape loaded from `frost.config.ts`.
+ * Root Frost config shape loaded from `frost.json`.
  */
 export interface FrostConfig {
+  /** Optional JSON schema reference for editor tooling. */
+  $schema?: string;
   /** All configured projects, keyed by project name. */
   projects: Record<string, ProjectConfig>;
 }

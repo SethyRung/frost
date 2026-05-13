@@ -9,7 +9,27 @@ interface AppProps {
   processManager: ProcessManager | null;
 }
 
-export function App({ config, configError, processManager }: AppProps) {
+export function App({ config, configError, processManager: _processManager }: AppProps) {
+  if (configError) {
+    return (
+      <box alignItems="center" justifyContent="center" flexGrow={1} flexDirection="column" gap={1}>
+        <text attributes={TextAttributes.BOLD}>Frost failed to load config</text>
+        <text attributes={TextAttributes.DIM}>{configError}</text>
+      </box>
+    );
+  }
+
+  if (!config) {
+    return (
+      <box alignItems="center" justifyContent="center" flexGrow={1} flexDirection="column" gap={1}>
+        <text attributes={TextAttributes.BOLD}>No frost.json found</text>
+        <text attributes={TextAttributes.DIM}>
+          Create frost.json in your current directory or a parent directory.
+        </text>
+      </box>
+    );
+  }
+
   return (
     <box alignItems="center" justifyContent="center" flexGrow={1}>
       <box justifyContent="center" alignItems="flex-end">

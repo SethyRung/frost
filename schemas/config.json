@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Frost Configuration",
+  "description": "Schema for Frost project configuration (frost.json)",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON schema reference for editor tooling and validation"
+    },
+    "projects": {
+      "type": "object",
+      "description": "All configured projects, keyed by project name",
+      "additionalProperties": {
+        "$ref": "#/definitions/ProjectConfig"
+      },
+      "minProperties": 1
+    }
+  },
+  "required": ["projects"],
+  "definitions": {
+    "ProjectConfig": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string",
+          "description": "Optional base directory for apps in this project, relative to the config file"
+        },
+        "apps": {
+          "type": "object",
+          "description": "Apps managed under this project, keyed by app name",
+          "additionalProperties": {
+            "$ref": "#/definitions/AppConfig"
+          },
+          "minProperties": 1
+        }
+      },
+      "required": ["apps"]
+    },
+    "AppConfig": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Command used to start the app, e.g. \"bun run dev\""
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Optional working directory for the app, relative to the project root"
+        }
+      },
+      "required": ["command"]
+    }
+  }
+}
