@@ -2,6 +2,7 @@ import { TextAttributes } from "@opentui/core";
 
 import type { FrostConfig } from "@/config/types";
 import type { ProcessManager } from "@/process/manager";
+import { ThemeProvider } from "@/tui/theme";
 
 interface AppProps {
   config: FrostConfig | null;
@@ -31,11 +32,13 @@ export function App({ config, configError, processManager: _processManager }: Ap
   }
 
   return (
-    <box alignItems="center" justifyContent="center" flexGrow={1}>
-      <box justifyContent="center" alignItems="flex-end">
-        <ascii-font font="tiny" text="OpenTUI" />
-        <text attributes={TextAttributes.DIM}>What will you build?</text>
+    <ThemeProvider>
+      <box alignItems="center" justifyContent="center" flexGrow={1}>
+        <box justifyContent="center" alignItems="flex-end">
+          <ascii-font font="tiny" text="OpenTUI" />
+          <text attributes={TextAttributes.DIM}>What will you build?</text>
+        </box>
       </box>
-    </box>
+    </ThemeProvider>
   );
 }
