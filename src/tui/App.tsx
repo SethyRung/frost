@@ -1,8 +1,8 @@
-import { TextAttributes } from "@opentui/core";
-
 import type { FrostConfig } from "@/config/types";
 import type { ProcessManager } from "@/process/manager";
 import { ThemeProvider } from "@/tui/theme";
+import { Dashboard } from "./Dashboard";
+import { Error } from "./components/Error";
 
 interface AppProps {
   config: FrostConfig | null;
@@ -10,35 +10,18 @@ interface AppProps {
   processManager: ProcessManager | null;
 }
 
-export function App({ config, configError, processManager: _processManager }: AppProps) {
+export function App({ config, configError, processManager }: AppProps) {
   if (configError) {
-    return (
-      <box alignItems="center" justifyContent="center" flexGrow={1} flexDirection="column" gap={1}>
-        <text attributes={TextAttributes.BOLD}>Frost failed to load config</text>
-        <text attributes={TextAttributes.DIM}>{configError}</text>
-      </box>
-    );
+    return <Error error={configError} />;
   }
 
-  if (!config) {
-    return (
-      <box alignItems="center" justifyContent="center" flexGrow={1} flexDirection="column" gap={1}>
-        <text attributes={TextAttributes.BOLD}>No frost.json found</text>
-        <text attributes={TextAttributes.DIM}>
-          Create frost.json in your current directory or a parent directory.
-        </text>
-      </box>
-    );
+  if (!config || !processManager) {
+    return <Error error="Create frost.json in your current directory or a parent directory." />;
   }
 
   return (
     <ThemeProvider>
-      <box alignItems="center" justifyContent="center" flexGrow={1}>
-        <box justifyContent="center" alignItems="flex-end">
-          <ascii-font font="tiny" text="OpenTUI" />
-          <text attributes={TextAttributes.DIM}>What will you build?</text>
-        </box>
-      </box>
+      <Dashboard config={config} processManager={processManager} />
     </ThemeProvider>
   );
 }
