@@ -1,25 +1,30 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { TextAttributes } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
-import { useThemeStore, useResolvedTheme } from "./provider";
-import { rgbaToString } from "./resolver";
+import type { ResolvedTheme } from "@/tui/theme/types";
+import { useThemeStore, useResolvedTheme } from "@/tui/theme/provider";
+import { rgbaToString } from "@/tui/theme/resolver";
 
-interface DialogThemeListProps {
+const VIEWPORT_SIZE = 10;
+
+interface ThemeDialogProps {
   onClose: () => void;
   onSelect?: (id: string) => void;
+  resolvedTheme?: ResolvedTheme | null;
 }
 
-export function DialogThemeList({ onClose, onSelect }: DialogThemeListProps) {
+export function ThemeDialog({ onClose, onSelect, resolvedTheme }: ThemeDialogProps) {
   const store = useThemeStore();
-  const currentResolved = useResolvedTheme();
+  const hookResolved = useResolvedTheme();
+  const currentResolved = resolvedTheme ?? hookResolved;
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
+  const [scrollOffset, setScrollOffset] = useState(0);
   const [, setConfirmed] = useState(false);
   const initialTheme = useRef(store.getActive());
 
   const bg = currentResolved ? rgbaToString(currentResolved.background) : undefined;
   const cursorBg = currentResolved ? rgbaToString(currentResolved.backgroundElement) : undefined;
-  const borderColor = currentResolved ? rgbaToString(currentResolved.border) : undefined;
 
   const allIds = useMemo(() => {
     return Object.keys(store.getAll()).sort((a, b) =>
@@ -34,7 +39,10 @@ export function DialogThemeList({ onClose, onSelect }: DialogThemeListProps) {
   }, [allIds, query]);
 
   useEffect(() => {
-    const target = query.trim() ? 0 : Math.max(0, allIds.indexOf(initialTheme.current));
+    const maxCursor = Math.max(0, filteredIds.length - 1);
+    const target = query.trim()
+      ? 0
+      : Math.min(Math.max(0, allIds.indexOf(initialTheme.current)), maxCursor);
     setCursor(target);
   }, [filteredIds.length]);
 
@@ -44,6 +52,22 @@ export function DialogThemeList({ onClose, onSelect }: DialogThemeListProps) {
       store.set(id);
     }
   }, [cursor, filteredIds, store]);
+
+  useEffect(() => {
+    if (filteredIds.length <= VIEWPORT_SIZE) {
+      setScrollOffset(0);
+    } else if (cursor < scrollOffset) {
+      setScrollOffset(cursor);
+    } else if (cursor >= scrollOffset + VIEWPORT_SIZE) {
+      setScrollOffset(cursor - VIEWPORT_SIZE + 1);
+    }
+  }, [cursor, filteredIds.length, scrollOffset]);
+
+  const visibleIds = useMemo(() => {
+    return filteredIds.slice(scrollOffset, scrollOffset + VIEWPORT_SIZE);
+  }, [filteredIds, scrollOffset]);
+
+  const visibleCursor = cursor - scrollOffset;
 
   const handleSelect = useCallback(() => {
     const id = filteredIds[cursor];
@@ -63,6 +87,7 @@ export function DialogThemeList({ onClose, onSelect }: DialogThemeListProps) {
   const handleInput = useCallback((value: string) => {
     setQuery(value);
     setCursor(0);
+    setScrollOffset(0);
   }, []);
 
   useKeyboard((key) => {
@@ -85,22 +110,16 @@ export function DialogThemeList({ onClose, onSelect }: DialogThemeListProps) {
   });
 
   return (
-    <box
-      borderStyle="single"
-      paddingX={1}
-      paddingY={1}
-      width={60}
-      style={{ borderColor, backgroundColor: bg }}
-    >
+    <box width={70} backgroundColor={bg} borderStyle="rounded" paddingX={1} paddingY={0.5}>
       <text attributes={TextAttributes.BOLD}>Select Theme</text>
       <box paddingY={1}>
         <input placeholder="Filter themes..." onInput={handleInput} />
       </box>
-      <box overflow="scroll" flexGrow={1}>
-        {filteredIds.map((id, i) => (
-          <ThemeListItem key={id} id={id} selected={i === cursor} cursorBg={cursorBg} />
+      <box height={VIEWPORT_SIZE}>
+        {visibleIds.map((id, i) => (
+          <ThemeListItem key={id} id={id} selected={i === visibleCursor} cursorBg={cursorBg} />
         ))}
-        {filteredIds.length === 0 && (
+        {visibleIds.length === 0 && (
           <text attributes={TextAttributes.DIM}>No themes match your query</text>
         )}
       </box>
@@ -123,6 +142,7 @@ interface ThemeListItemProps {
 function ThemeListItem({ id, selected, cursorBg }: ThemeListItemProps) {
   return (
     <box
+      height={1}
       paddingX={1}
       style={{
         backgroundColor: selected ? cursorBg : undefined,

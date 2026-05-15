@@ -8,7 +8,7 @@ interface CommandPaletteAction {
   id: string;
   label: string;
   description?: string;
-  action: () => void;
+  action: () => boolean | void;
 }
 
 interface CommandPaletteProps {
@@ -44,7 +44,8 @@ export function CommandPalette({ actions, onClose, onSelect, resolvedTheme }: Co
     const action = filtered[cursor];
     if (action) {
       onSelect?.(action.id);
-      action.action();
+      const handled = action.action();
+      if (handled) return;
     }
     onClose();
   }, [filtered, cursor, onSelect, onClose]);
@@ -86,7 +87,7 @@ export function CommandPalette({ actions, onClose, onSelect, resolvedTheme }: Co
         />
       </box>
 
-      <box overflow="scroll" flexGrow={1}>
+      <box height={20} overflow="scroll" flexGrow={1}>
         {filtered.map((action, i) => (
           <box
             key={action.id}

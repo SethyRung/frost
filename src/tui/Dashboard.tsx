@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useKeyboard } from "@opentui/react";
 import type { FrostConfig } from "@/config/types";
 import type { ProcessManager } from "@/process/manager";
-import { useThemeStore, useResolvedTheme, DialogThemeList } from "@/tui/theme";
+import { useThemeStore, useResolvedTheme } from "@/tui/theme";
 
 import { useProcessManager } from "@/tui/hooks/useProcessManager";
 import { useNavigation } from "@/tui/hooks/useNavigation";
@@ -12,13 +12,14 @@ import { LogViewer } from "@/tui/components/LogViewer";
 import { CommandBar } from "@/tui/components/CommandBar";
 import { CommandPalette } from "@/tui/components/CommandPalette";
 import { SearchDialog } from "@/tui/components/SearchDialog";
+import { ThemeDialog } from "@/tui/components/ThemeDialog";
 
 interface DashboardProps {
   config: FrostConfig;
   processManager: ProcessManager;
 }
 
-type Overlay = "none" | "palette" | "search" | "theme";
+type Overlay = "none" | "palette" | "search" | "themes";
 
 export function Dashboard({ config, processManager }: DashboardProps) {
   const themeStore = useThemeStore();
@@ -27,27 +28,35 @@ export function Dashboard({ config, processManager }: DashboardProps) {
   const proc = useProcessManager(processManager, config);
   const [overlay, setOverlay] = useState<Overlay>("none");
 
-  const paletteActions = useMemo(
-    () => [
-      {
-        id: "switch-theme",
-        label: "Switch Theme",
-        description: `Current: ${themeStore.getActive()}`,
-        action: () => {
-          setOverlay("theme");
-        },
+  const paletteActions = useMemo(() => {
+    const actions: Array<{
+      id: string;
+      label: string;
+      description?: string;
+      action: () => boolean | void;
+    }> = [];
+
+    actions.push({
+      id: "switch-theme",
+      label: "Switch Theme",
+      description: `Current: ${themeStore.getActive()}`,
+      action: () => {
+        setOverlay("themes");
+        return true;
       },
-      {
-        id: "reload-config",
-        label: "Reload Config",
-        description: "Re-read frost.json",
-        action: () => {
-          setOverlay("none");
-        },
+    });
+
+    actions.push({
+      id: "reload-config",
+      label: "Reload Config",
+      description: "Re-read frost.json",
+      action: () => {
+        setOverlay("none");
       },
-    ],
-    [themeStore],
-  );
+    });
+
+    return actions;
+  }, [themeStore]);
 
   const searchResults = useMemo(() => {
     const results: Array<{ id: string; label: string; description?: string }> = [];
@@ -174,6 +183,9 @@ export function Dashboard({ config, processManager }: DashboardProps) {
               resolvedTheme={resolvedTheme}
             />
           )}
+          {overlay === "themes" && (
+            <ThemeDialog onClose={() => setOverlay("none")} resolvedTheme={resolvedTheme} />
+          )}
           {overlay === "search" && (
             <SearchDialog
               results={searchResults}
@@ -193,7 +205,6 @@ export function Dashboard({ config, processManager }: DashboardProps) {
               resolvedTheme={resolvedTheme}
             />
           )}
-          {overlay === "theme" && <DialogThemeList onClose={() => setOverlay("none")} />}
         </box>
       )}
     </box>
