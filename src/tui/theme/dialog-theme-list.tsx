@@ -17,6 +17,10 @@ export function DialogThemeList({ onClose, onSelect }: DialogThemeListProps) {
   const [, setConfirmed] = useState(false);
   const initialTheme = useRef(store.getActive());
 
+  const bg = currentResolved ? rgbaToString(currentResolved.background) : undefined;
+  const cursorBg = currentResolved ? rgbaToString(currentResolved.backgroundElement) : undefined;
+  const borderColor = currentResolved ? rgbaToString(currentResolved.border) : undefined;
+
   const allIds = useMemo(() => {
     return Object.keys(store.getAll()).sort((a, b) =>
       a.localeCompare(b, undefined, { sensitivity: "base" }),
@@ -56,13 +60,10 @@ export function DialogThemeList({ onClose, onSelect }: DialogThemeListProps) {
     onClose();
   }, [store, onClose]);
 
-  const handleInput = useCallback(
-    (value: string) => {
-      setQuery(value);
-      setCursor(0);
-    },
-    [],
-  );
+  const handleInput = useCallback((value: string) => {
+    setQuery(value);
+    setCursor(0);
+  }, []);
 
   useKeyboard((key) => {
     if (key.name === "down" || (key.name === "tab" && !key.shift)) {
@@ -83,39 +84,31 @@ export function DialogThemeList({ onClose, onSelect }: DialogThemeListProps) {
     }
   });
 
-  const borderColor = currentResolved ? rgbaToString(currentResolved.border) : undefined;
-
   return (
     <box
       borderStyle="single"
-      padding={1}
+      paddingX={1}
+      paddingY={1}
       width={60}
-      height={Math.min(filteredIds.length + 5, 20)}
-      style={{ borderColor }}
+      style={{ borderColor, backgroundColor: bg }}
     >
       <text attributes={TextAttributes.BOLD}>Select Theme</text>
-      <box marginTop={1}>
-        <input
-          placeholder="Filter themes..."
-          onInput={handleInput}
-        />
+      <box paddingY={1}>
+        <input placeholder="Filter themes..." onInput={handleInput} />
       </box>
-      <box marginTop={1} flexDirection="column" overflow="scroll">
+      <box overflow="scroll" flexGrow={1}>
         {filteredIds.map((id, i) => (
-          <ThemeListItem
-            key={id}
-            id={id}
-            selected={i === cursor}
-          />
+          <ThemeListItem key={id} id={id} selected={i === cursor} cursorBg={cursorBg} />
         ))}
         {filteredIds.length === 0 && (
           <text attributes={TextAttributes.DIM}>No themes match your query</text>
         )}
       </box>
-      <box marginTop={1} gap={1}>
+      <box paddingY={1} flexDirection="row">
         <text attributes={TextAttributes.DIM}>&uarr;&darr; navigate</text>
+        <box flexGrow={1} />
         <text attributes={TextAttributes.DIM}>Enter select</text>
-        <text attributes={TextAttributes.DIM}>Esc cancel</text>
+        <text attributes={TextAttributes.DIM}>&nbsp;Esc cancel</text>
       </box>
     </box>
   );
@@ -124,17 +117,21 @@ export function DialogThemeList({ onClose, onSelect }: DialogThemeListProps) {
 interface ThemeListItemProps {
   id: string;
   selected: boolean;
+  cursorBg?: string;
 }
 
-function ThemeListItem({ id, selected }: ThemeListItemProps) {
+function ThemeListItem({ id, selected, cursorBg }: ThemeListItemProps) {
   return (
     <box
       paddingX={1}
       style={{
-        backgroundColor: selected ? "#555" : undefined,
+        backgroundColor: selected ? cursorBg : undefined,
       }}
     >
-      <text attributes={selected ? TextAttributes.BOLD : undefined}>{id}</text>
+      <text attributes={selected ? TextAttributes.BOLD : undefined}>
+        {selected ? "\u203A " : "  "}
+        {id}
+      </text>
     </box>
   );
 }
