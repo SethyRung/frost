@@ -13,6 +13,7 @@ export interface ProcessInfo {
   cwd: string;
   status: ProcessStatus;
   logs: LogLine[];
+  kill?: () => void;
 }
 
 export interface ProcessState {

@@ -99,12 +99,11 @@ export function useProcessManager(
     // Subscribe to process events
     const handleLog = (appId: string, line: LogLine) => {
       setProcessStates((prev) => {
-        const existing = prev[appId] ?? { status: "running", logs: [] };
+        const existing = prev[appId] ?? { status: "stopped", logs: [] };
         return {
           ...prev,
           [appId]: {
             ...existing,
-            status: "running",
             logs: [...existing.logs, line],
           },
         };
@@ -166,16 +165,23 @@ export function useProcessManager(
     [processManager, appId],
   );
 
+  const isActive = useCallback(
+    (status: ProcessStatus): boolean => {
+      return status === "running" || status === "starting" || status === "stopping";
+    },
+    [],
+  );
+
   const toggleApp = useCallback(
     async (projectName: string, appName: string) => {
       const status = getStatus(projectName, appName);
-      if (status === "running") {
+      if (isActive(status)) {
         await stopApp(projectName, appName);
       } else {
         await startApp(projectName, appName);
       }
     },
-    [getStatus, startApp, stopApp],
+    [getStatus, isActive, startApp, stopApp],
   );
 
   const startAll = useCallback(
@@ -208,16 +214,16 @@ export function useProcessManager(
       const project = config.projects[projectName];
       if (!project) return;
       const appNames = Object.keys(project.apps);
-      const anyRunning = appNames.some(
-        (appName) => getStatus(projectName, appName) === "running",
+      const anyActive = appNames.some(
+        (appName) => isActive(getStatus(projectName, appName)),
       );
-      if (anyRunning) {
+      if (anyActive) {
         await stopAll(projectName);
       } else {
         await startAll(projectName);
       }
     },
-    [config, getStatus, startAll, stopAll],
+    [config, getStatus, isActive, startAll, stopAll],
   );
 
   const runningCount = Object.values(processStates).filter(

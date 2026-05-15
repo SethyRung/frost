@@ -52,14 +52,17 @@ export class ProcessManager {
 
     const proc = spawnApp({ command, cwd: normalizedCwd });
 
+    const existing = this.apps.get(appId);
     this.apps.set(appId, {
       id: appId,
       pid: proc.pid,
       command,
       cwd: normalizedCwd,
       status: "running",
-      logs: [],
+      logs: existing?.logs ?? [],
+      kill: proc.kill,
     });
+    this.emit("stateChange", appId, "running");
 
     // Stream stdout
     void this.streamLogs(appId, proc.stdout, "stdout");
@@ -67,10 +70,11 @@ export class ProcessManager {
     // Stream stderr
     void this.streamLogs(appId, proc.stderr, "stderr");
 
-    // Watch for exit
+    // Watch for exit — guard against race with restarts
+    const exitPid = proc.pid;
     proc.exitCode.then((code) => {
       const app = this.apps.get(appId);
-      if (!app) return;
+      if (!app || app.pid !== exitPid) return;
       // SIGTERM exit code is 143 (128 + 15), treat as stopped not crashed
       if (code === 0 || code === 143 || code === null) {
         this.updateStatus(appId, "stopped");
@@ -99,21 +103,26 @@ export class ProcessManager {
     const app = this.apps.get(appId);
     if (!app || app.status === "stopped" || app.status === "stopping") return;
 
-    const prevPid = app.pid;
     this.updateStatus(appId, "stopping");
 
-    if (prevPid) {
+    if (app.kill) {
       try {
-        process.kill(prevPid, "SIGTERM");
+        app.kill();
       } catch {
         // already dead
       }
     }
 
     await new Promise<void>((resolve) => {
+      let checks = 0;
+      const maxChecks = 100; // 5 seconds timeout
       const check = () => {
+        checks++;
         const a = this.apps.get(appId);
-        if (!a || a.status === "stopped" || a.status === "crashed") {
+        if (!a || a.status === "stopped" || a.status === "crashed" || checks >= maxChecks) {
+          if (a && a.status !== "stopped" && a.status !== "crashed") {
+            this.updateStatus(appId, "stopped");
+          }
           resolve();
         } else {
           setTimeout(check, 50);

@@ -10,13 +10,14 @@ export interface SpawnResult {
   stdout: ReadableStream<Uint8Array> | null;
   stderr: ReadableStream<Uint8Array> | null;
   exitCode: Promise<number | null>;
+  kill(): void;
 }
 
 export function spawnApp(opts: SpawnOptions): SpawnResult {
   const { command, cwd } = opts;
 
   const child = Bun.spawn({
-    cmd: command.split(" "),
+    cmd: ["setsid", "sh", "-c", command],
     cwd,
     stdout: "pipe",
     stderr: "pipe",
@@ -27,6 +28,17 @@ export function spawnApp(opts: SpawnOptions): SpawnResult {
     stdout: child.stdout,
     stderr: child.stderr,
     exitCode: child.exited,
+    kill: () => {
+      try {
+        process.kill(-child.pid, "SIGTERM");
+      } catch {
+        try {
+          child.kill("SIGTERM");
+        } catch {
+          // already dead
+        }
+      }
+    },
   };
 }
 
