@@ -14,16 +14,18 @@ interface SidebarProps {
 
 export function Sidebar({ config, selection, getStatus, resolvedTheme }: SidebarProps) {
   const selectBg = resolvedTheme ? rgbaToString(resolvedTheme.backgroundElement) : undefined;
+  const panelBg = resolvedTheme ? rgbaToString(resolvedTheme.backgroundPanel) : undefined;
+  const borderColor = resolvedTheme ? rgbaToString(resolvedTheme.border) : undefined;
 
   const projectNames = Object.keys(config.projects);
 
   return (
-    <box width={30} borderStyle="rounded">
+    <box width={30} borderStyle="rounded" backgroundColor={panelBg} borderColor={borderColor}>
       <box paddingX={1}>
         <text>Projects & Apps</text>
       </box>
 
-      <box border={["top"]} />
+      <box border={["top"]} borderColor={borderColor} />
 
       <box paddingX={1} gap={0.5}>
         {projectNames.length === 0 && (

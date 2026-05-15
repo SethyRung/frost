@@ -163,10 +163,14 @@ export function Dashboard({ config, processManager }: DashboardProps) {
           resolvedTheme={resolvedTheme}
         />
 
-        <LogViewer logs={selectedLogs} title={logTitle} />
+        <LogViewer logs={selectedLogs} title={logTitle} resolvedTheme={resolvedTheme} />
       </box>
 
-      <CommandBar runningCount={proc.runningCount} selectedApp={selectedAppLabel} />
+      <CommandBar
+        runningCount={proc.runningCount}
+        selectedApp={selectedAppLabel}
+        resolvedTheme={resolvedTheme}
+      />
 
       {overlay !== "none" && (
         <box

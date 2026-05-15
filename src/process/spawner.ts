@@ -21,6 +21,12 @@ export function spawnApp(opts: SpawnOptions): SpawnResult {
     cwd,
     stdout: "pipe",
     stderr: "pipe",
+    env: {
+      ...process.env,
+      FORCE_COLOR: "3",
+      COLORTERM: "truecolor",
+      TERM: "xterm-256color",
+    },
   });
 
   return {

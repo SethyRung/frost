@@ -22,7 +22,8 @@ export function CommandPalette({ actions, onClose, onSelect, resolvedTheme }: Co
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
 
-  const bg = resolvedTheme ? rgbaToString(resolvedTheme.background) : undefined;
+  const panelBg = resolvedTheme ? rgbaToString(resolvedTheme.backgroundPanel) : undefined;
+  const borderColor = resolvedTheme ? rgbaToString(resolvedTheme.border) : undefined;
   const cursorBg = resolvedTheme ? rgbaToString(resolvedTheme.backgroundElement) : undefined;
 
   const filtered = useMemo(() => {
@@ -70,7 +71,14 @@ export function CommandPalette({ actions, onClose, onSelect, resolvedTheme }: Co
   });
 
   return (
-    <box width={70} backgroundColor={bg} borderStyle="rounded" paddingX={1} paddingY={0.5}>
+    <box
+      width={70}
+      paddingX={1}
+      paddingY={0.5}
+      borderStyle="rounded"
+      backgroundColor={panelBg}
+      borderColor={borderColor}
+    >
       <box flexDirection="row">
         <text attributes={TextAttributes.BOLD}>Commands</text>
         <box flexGrow={1} />

@@ -1,8 +1,11 @@
 import { TextAttributes } from "@opentui/core";
+import type { ResolvedTheme } from "@/tui/theme/types";
+import { rgbaToString } from "@/tui/theme";
 
 interface CommandBarProps {
   runningCount: number;
   selectedApp?: string | null;
+  resolvedTheme?: ResolvedTheme | null;
 }
 
 const commands = [
@@ -14,9 +17,19 @@ const commands = [
   "/ Search",
 ];
 
-export function CommandBar({ runningCount, selectedApp }: CommandBarProps) {
+export function CommandBar({ runningCount, selectedApp, resolvedTheme }: CommandBarProps) {
+  const panelBg = resolvedTheme ? rgbaToString(resolvedTheme.backgroundPanel) : undefined;
+  const borderColor = resolvedTheme ? rgbaToString(resolvedTheme.border) : undefined;
+
   return (
-    <box flexDirection="row" alignItems="center" borderStyle="rounded" paddingX={1}>
+    <box
+      flexDirection="row"
+      alignItems="center"
+      paddingX={1}
+      borderStyle="rounded"
+      backgroundColor={panelBg}
+      borderColor={borderColor}
+    >
       <box flexDirection="row" gap={4}>
         {commands.map((command) => (
           <text key={command} attributes={TextAttributes.DIM}>

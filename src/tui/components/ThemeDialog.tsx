@@ -23,7 +23,8 @@ export function ThemeDialog({ onClose, onSelect, resolvedTheme }: ThemeDialogPro
   const [, setConfirmed] = useState(false);
   const initialTheme = useRef(store.getActive());
 
-  const bg = currentResolved ? rgbaToString(currentResolved.background) : undefined;
+  const panelBg = resolvedTheme ? rgbaToString(resolvedTheme.backgroundPanel) : undefined;
+  const borderColor = resolvedTheme ? rgbaToString(resolvedTheme.border) : undefined;
   const cursorBg = currentResolved ? rgbaToString(currentResolved.backgroundElement) : undefined;
 
   const allIds = useMemo(() => {
@@ -110,7 +111,14 @@ export function ThemeDialog({ onClose, onSelect, resolvedTheme }: ThemeDialogPro
   });
 
   return (
-    <box width={70} backgroundColor={bg} borderStyle="rounded" paddingX={1} paddingY={0.5}>
+    <box
+      width={70}
+      borderStyle="rounded"
+      backgroundColor={panelBg}
+      borderColor={borderColor}
+      paddingX={1}
+      paddingY={0.5}
+    >
       <text attributes={TextAttributes.BOLD}>Select Theme</text>
       <box paddingY={1}>
         <input placeholder="Filter themes..." onInput={handleInput} />

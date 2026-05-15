@@ -21,7 +21,8 @@ export function SearchDialog({ results, onClose, onSelect, resolvedTheme }: Sear
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
 
-  const bg = resolvedTheme ? rgbaToString(resolvedTheme.background) : undefined;
+  const panelBg = resolvedTheme ? rgbaToString(resolvedTheme.backgroundPanel) : undefined;
+  const borderColor = resolvedTheme ? rgbaToString(resolvedTheme.border) : undefined;
   const cursorBg = resolvedTheme ? rgbaToString(resolvedTheme.backgroundElement) : undefined;
 
   const filtered = useMemo(() => {
@@ -60,7 +61,14 @@ export function SearchDialog({ results, onClose, onSelect, resolvedTheme }: Sear
   });
 
   return (
-    <box width={70} backgroundColor={bg} borderStyle="rounded" paddingX={1} paddingY={0.5}>
+    <box
+      width={70}
+      borderStyle="rounded"
+      backgroundColor={panelBg}
+      borderColor={borderColor}
+      paddingX={1}
+      paddingY={0.5}
+    >
       <box flexDirection="row">
         <text attributes={TextAttributes.BOLD}>Search</text>
         <box flexGrow={1} />
