@@ -1,4 +1,4 @@
-use crate::theme::types::{ResolvedTheme, RGBA, ThemeDefValue, ThemeJson, ThemeMode, ThemeValue};
+use crate::theme::types::{RGBA, ResolvedTheme, ThemeDefValue, ThemeJson, ThemeMode, ThemeValue};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -49,10 +49,19 @@ fn parse_css_rgba(str: &str) -> Result<RGBA, ResolveError> {
     if parts.len() < 3 {
         return Err(ResolveError(format!("Invalid rgb/rgba: {}", str)));
     }
-    let r = parts[0].parse::<u8>().map_err(|e| ResolveError(e.to_string()))?;
-    let g = parts[1].parse::<u8>().map_err(|e| ResolveError(e.to_string()))?;
-    let b = parts[2].parse::<u8>().map_err(|e| ResolveError(e.to_string()))?;
-    let a = parts.get(3).and_then(|s| s.parse::<f32>().ok()).unwrap_or(1.0);
+    let r = parts[0]
+        .parse::<u8>()
+        .map_err(|e| ResolveError(e.to_string()))?;
+    let g = parts[1]
+        .parse::<u8>()
+        .map_err(|e| ResolveError(e.to_string()))?;
+    let b = parts[2]
+        .parse::<u8>()
+        .map_err(|e| ResolveError(e.to_string()))?;
+    let a = parts
+        .get(3)
+        .and_then(|s| s.parse::<f32>().ok())
+        .unwrap_or(1.0);
     Ok(RGBA::from_u8(r, g, b, a))
 }
 
@@ -143,13 +152,7 @@ pub fn resolve_color(
                     return parse_css_rgba(&def_str);
                 }
                 chain.push(str.clone());
-                let result = resolve_color(
-                    &ThemeValue::String(def_str),
-                    defs,
-                    theme,
-                    mode,
-                    chain,
-                );
+                let result = resolve_color(&ThemeValue::String(def_str), defs, theme, mode, chain);
                 chain.pop();
                 return result;
             }
@@ -178,14 +181,17 @@ fn resolve_optional(
     resolve_color(value, defs, theme, mode, &mut chain).ok()
 }
 
-pub fn resolve_theme(theme_json: &ThemeJson, mode: ThemeMode) -> Result<ResolvedTheme, ResolveError> {
+pub fn resolve_theme(
+    theme_json: &ThemeJson,
+    mode: ThemeMode,
+) -> Result<ResolvedTheme, ResolveError> {
     let defs = theme_json.defs.clone().unwrap_or_default();
     let theme = &theme_json.theme;
 
     let r = |key: &str| -> Result<RGBA, ResolveError> {
-        let value = theme.get(key).ok_or_else(|| {
-            ResolveError(format!("Missing theme token: {}", key))
-        })?;
+        let value = theme
+            .get(key)
+            .ok_or_else(|| ResolveError(format!("Missing theme token: {}", key)))?;
         let mut chain = Vec::new();
         resolve_color(value, &defs, theme, mode, &mut chain)
     };
@@ -269,9 +275,15 @@ mod tests {
         assert_eq!(parse_hex("#ff0000").unwrap(), RGBA::from_u8(255, 0, 0, 1.0));
         assert_eq!(parse_hex("#00ff00").unwrap(), RGBA::from_u8(0, 255, 0, 1.0));
         assert_eq!(parse_hex("#0000ff").unwrap(), RGBA::from_u8(0, 0, 255, 1.0));
-        assert_eq!(parse_hex("#fff").unwrap(), RGBA::from_u8(255, 255, 255, 1.0));
+        assert_eq!(
+            parse_hex("#fff").unwrap(),
+            RGBA::from_u8(255, 255, 255, 1.0)
+        );
         assert_eq!(parse_hex("#f00").unwrap(), RGBA::from_u8(255, 0, 0, 1.0));
-        assert_eq!(parse_hex("#ff000080").unwrap(), RGBA::from_u8(255, 0, 0, 128.0 / 255.0));
+        assert_eq!(
+            parse_hex("#ff000080").unwrap(),
+            RGBA::from_u8(255, 0, 0, 128.0 / 255.0)
+        );
     }
 
     #[test]
@@ -316,7 +328,10 @@ mod tests {
     #[test]
     fn test_resolve_color_reference() {
         let mut defs = HashMap::new();
-        defs.insert("myRed".to_string(), ThemeDefValue::String("#ff0000".to_string()));
+        defs.insert(
+            "myRed".to_string(),
+            ThemeDefValue::String("#ff0000".to_string()),
+        );
         let theme = HashMap::new();
         let mut chain = Vec::new();
 

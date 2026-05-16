@@ -141,6 +141,9 @@ mod tests {
         store2.load();
         assert_eq!(store2.state.active_theme, Some("dracula".to_string()));
         assert_eq!(store2.state.last_project, Some("portfolio".to_string()));
-        assert_eq!(store2.state.expanded_apps, vec!["portfolio/frontend".to_string()]);
+        assert_eq!(
+            store2.state.expanded_apps,
+            vec!["portfolio/frontend".to_string()]
+        );
     }
 }

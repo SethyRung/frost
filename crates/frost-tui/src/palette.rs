@@ -106,10 +106,7 @@ impl Widget for Palette {
             Style::default().fg(Color::White)
         };
         let filter_para = Paragraph::new(filter_text).style(filter_style);
-        filter_para.render(
-            Rect::new(inner.x, inner.y, inner.width, 1),
-            buf,
-        );
+        filter_para.render(Rect::new(inner.x, inner.y, inner.width, 1), buf);
 
         // Divider.
         let divider = "─".repeat(inner.width as usize);

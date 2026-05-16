@@ -98,7 +98,12 @@ pub fn build_visible_tree(config: &FrostConfig, expanded: &HashSet<String>) -> V
 }
 
 /// Get the process status for a subcommand.
-fn get_status(manager: &ProcessManager, project: &str, app: &str, subcommand: &str) -> ProcessStatus {
+fn get_status(
+    manager: &ProcessManager,
+    project: &str,
+    app: &str,
+    subcommand: &str,
+) -> ProcessStatus {
     manager
         .get_info(project, app, subcommand)
         .map(|info| info.status)
@@ -116,7 +121,11 @@ pub struct Sidebar<'a> {
 
 impl<'a> Widget for Sidebar<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let border_color = if self.focused { Color::Cyan } else { Color::DarkGray };
+        let border_color = if self.focused {
+            Color::Cyan
+        } else {
+            Color::DarkGray
+        };
         let block = Block::default()
             .title(" Projects ")
             .borders(Borders::ALL)
@@ -126,7 +135,10 @@ impl<'a> Widget for Sidebar<'a> {
 
         let items = build_visible_tree(self.config, self.expanded);
         if items.is_empty() {
-            let msg = Span::styled("No projects configured", Style::default().fg(Color::DarkGray));
+            let msg = Span::styled(
+                "No projects configured",
+                Style::default().fg(Color::DarkGray),
+            );
             buf.set_line(inner.x, inner.y, &Line::from(msg), inner.width);
             return;
         }
@@ -167,20 +179,42 @@ impl<'a> Widget for Sidebar<'a> {
                 TreeItemKind::Terminal | TreeItemKind::Subcommand => "  ",
             };
 
-            let status = match item.kind {
+            let (status, title) = match item.kind {
                 TreeItemKind::Terminal | TreeItemKind::Subcommand => {
                     let parts: Vec<_> = item.path.split('/').collect();
                     if parts.len() == 3 {
                         let status = get_status(self.process_manager, parts[0], parts[1], parts[2]);
-                        format!("{} ", AppState::status_icon(status))
+                        let title = self
+                            .process_manager
+                            .get_title(parts[0], parts[1], parts[2]);
+                        (format!("{} ", AppState::status_icon(status)), title)
                     } else {
-                        String::new()
+                        (String::new(), None)
                     }
                 }
-                _ => String::new(),
+                _ => (String::new(), None),
             };
 
-            let text = format!("{}{}{}{}", indent, prefix, status, item.name);
+            // Append `— <title>` when the child has set one via OSC 0/2,
+            // truncated so it can't push the indicator off-screen.
+            let title_suffix = title
+                .as_deref()
+                .filter(|t| !t.is_empty())
+                .map(|t| {
+                    let max = 24usize;
+                    let trimmed: String = if t.chars().count() > max {
+                        t.chars().take(max).collect::<String>() + "…"
+                    } else {
+                        t.to_string()
+                    };
+                    format!(" — {}", trimmed)
+                })
+                .unwrap_or_default();
+
+            let text = format!(
+                "{}{}{}{}{}",
+                indent, prefix, status, item.name, title_suffix
+            );
             let span = Span::styled(text, style);
             let line = Line::from(span);
             buf.set_line(inner.x, row, &line, inner.width);

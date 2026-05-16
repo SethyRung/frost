@@ -73,7 +73,11 @@ fn validate_config(config: &FrostConfig) -> Result<(), ConfigError> {
 
         for (app_name, app) in &project.apps {
             let has_command = app.command.is_some();
-            let has_commands = app.commands.as_ref().map(|c| !c.is_empty()).unwrap_or(false);
+            let has_commands = app
+                .commands
+                .as_ref()
+                .map(|c| !c.is_empty())
+                .unwrap_or(false);
 
             if !has_command && !has_commands {
                 return Err(ConfigError::Validation(format!(
@@ -122,10 +126,7 @@ pub struct RuntimeCommand {
 /// Flatten config into a list of spawnable runtime commands.
 ///
 /// `workdir` resolution chain: sub-command level → app level → project level → config dir.
-pub fn flatten_config(
-    config: &FrostConfig,
-    config_path: impl AsRef<Path>,
-) -> Vec<RuntimeCommand> {
+pub fn flatten_config(config: &FrostConfig, config_path: impl AsRef<Path>) -> Vec<RuntimeCommand> {
     let config_dir = config_path
         .as_ref()
         .parent()
@@ -192,7 +193,9 @@ fn resolve_workdir(base: &Path, relative: Option<&str>) -> PathBuf {
             if path.is_absolute() {
                 path.to_path_buf()
             } else {
-                base.join(path).canonicalize().unwrap_or_else(|_| base.join(path))
+                base.join(path)
+                    .canonicalize()
+                    .unwrap_or_else(|_| base.join(path))
             }
         }
         None => base.to_path_buf(),
@@ -273,10 +276,7 @@ command = "bun serve"
         assert!(dev.is_default);
         assert!(dev.workdir.to_string_lossy().contains("frontend"));
 
-        let api = commands
-            .iter()
-            .find(|c| c.app_name == "api")
-            .unwrap();
+        let api = commands.iter().find(|c| c.app_name == "api").unwrap();
         assert_eq!(api.subcommand_name, "default");
         assert_eq!(api.command, "bun serve");
         assert!(api.is_default);
@@ -286,7 +286,11 @@ command = "bun serve"
     fn test_find_config_walks_up() {
         let dir = tempfile::tempdir().unwrap();
         let config_path = dir.path().join("frost.toml");
-        std::fs::write(&config_path, "[projects.p]\n\n[projects.p.apps.a]\ncommand = 'x'\n").unwrap();
+        std::fs::write(
+            &config_path,
+            "[projects.p]\n\n[projects.p.apps.a]\ncommand = 'x'\n",
+        )
+        .unwrap();
 
         let subdir = dir.path().join("a").join("b").join("c");
         std::fs::create_dir_all(&subdir).unwrap();

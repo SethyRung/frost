@@ -1,6 +1,6 @@
-use nix::sys::signal::{kill, Signal};
+use nix::sys::signal::{Signal, kill};
 use nix::unistd::Pid;
-use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use std::path::Path;
 
 /// Error type for process/PTY operations.
@@ -67,12 +67,14 @@ pub fn spawn_pty(
     rows: u16,
 ) -> Result<PtyProcess, ProcessError> {
     let pty_system = native_pty_system();
-    let pair = pty_system.openpty(PtySize {
-        rows,
-        cols,
-        pixel_width: 0,
-        pixel_height: 0,
-    }).map_err(|e| ProcessError::Pty(e.to_string()))?;
+    let pair = pty_system
+        .openpty(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .map_err(|e| ProcessError::Pty(e.to_string()))?;
 
     let mut cmd = CommandBuilder::new("sh");
     cmd.arg("-c");
@@ -80,19 +82,22 @@ pub fn spawn_pty(
     cmd.cwd(workdir.to_str().unwrap_or("."));
     cmd.env("TERM", "xterm-256color");
 
-    let child = pair.slave
+    let child = pair
+        .slave
         .spawn_command(cmd)
         .map_err(|e| ProcessError::Pty(e.to_string()))?;
 
-    let pid = child.process_id().ok_or_else(|| {
-        ProcessError::Pty("spawned child has no process id".to_string())
-    })?;
+    let pid = child
+        .process_id()
+        .ok_or_else(|| ProcessError::Pty("spawned child has no process id".to_string()))?;
 
-    let reader = pair.master
+    let reader = pair
+        .master
         .try_clone_reader()
         .map_err(|e| ProcessError::Pty(e.to_string()))?;
 
-    let writer = pair.master
+    let writer = pair
+        .master
         .take_writer()
         .map_err(|e| ProcessError::Pty(e.to_string()))?;
 

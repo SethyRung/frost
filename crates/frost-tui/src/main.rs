@@ -3,11 +3,13 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture, Event},
+    event::{
+        DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture, Event,
+    },
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use tokio::sync::mpsc;
 
 use frost_core::{ProcessManager, find_config, load_config};
@@ -21,6 +23,7 @@ mod input;
 mod log_viewer;
 mod palette;
 mod search;
+mod selection;
 mod sidebar;
 mod state;
 mod theme_dialog;
@@ -41,7 +44,14 @@ async fn main() -> Result<()> {
     let mut screen_rx = process_manager.subscribe_screen();
 
     // Run the app.
-    let result = run_app(&mut terminal, process_manager, config, config_path, &mut screen_rx).await;
+    let result = run_app(
+        &mut terminal,
+        process_manager,
+        config,
+        config_path,
+        &mut screen_rx,
+    )
+    .await;
 
     // Restore terminal regardless of result.
     restore_terminal(&mut terminal)?;
@@ -49,49 +59,47 @@ async fn main() -> Result<()> {
     result
 }
 
-/// Enter raw mode + alternate screen.
+/// Enter raw mode + alternate screen, enable mouse capture, and turn on
+/// bracketed paste so the host terminal delivers `Event::Paste(text)`
+/// in one shot instead of as a stream of synthetic key events.
 fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        EnableMouseCapture,
+        EnableBracketedPaste
+    )?;
     let backend = CrosstermBackend::new(stdout);
     Ok(Terminal::new(backend)?)
 }
 
-/// Leave raw mode + alternate screen.
+/// Reverse of [`setup_terminal`]. The host terminal's state must be put
+/// back exactly as we found it, otherwise the user's shell session ends
+/// up in a broken state (mouse capture stuck, paste mangled).
 fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
     disable_raw_mode()?;
     execute!(
         terminal.backend_mut(),
+        DisableBracketedPaste,
+        DisableMouseCapture,
         LeaveAlternateScreen,
-        DisableMouseCapture
     )?;
     terminal.show_cursor()?;
     Ok(())
 }
 
-/// Spawn a background thread that forwards crossterm events into a tokio channel.
+/// Spawn a background thread that forwards crossterm events into a tokio
+/// channel. The loop exits only when the channel is closed (i.e. the main
+/// task ended) or when crossterm reports a fatal read error — the old
+/// "exit on Ctrl+C" safety break is gone because Ctrl+C is now a real
+/// terminal key when the log viewer is focused.
 fn spawn_event_reader(tx: mpsc::UnboundedSender<Event>) {
-    use crossterm::event::{KeyCode, KeyModifiers};
-
     std::thread::spawn(move || {
-        loop {
-            match crossterm::event::read() {
-                Ok(event) => {
-                    let is_ctrl_c = matches!(
-                        event,
-                        Event::Key(k)
-                            if k.code == KeyCode::Char('c')
-                                && k.modifiers.contains(KeyModifiers::CONTROL)
-                    );
-                    if tx.send(event).is_err() {
-                        break;
-                    }
-                    if is_ctrl_c {
-                        break;
-                    }
-                }
-                Err(_) => break,
+        while let Ok(event) = crossterm::event::read() {
+            if tx.send(event).is_err() {
+                break;
             }
         }
     });
@@ -105,7 +113,10 @@ async fn run_app(
     config_path: PathBuf,
     screen_rx: &mut tokio::sync::broadcast::Receiver<frost_core::ScreenUpdate>,
 ) -> Result<()> {
-    let mut app = App::new(process_manager, config, config_path);
+    // Query the actual terminal size so initial PTY dims match the visible
+    // log pane, instead of defaulting to a guessed 80x24.
+    let initial_size = crossterm::terminal::size().unwrap_or((120, 30));
+    let mut app = App::new(process_manager, config, config_path, initial_size);
 
     // Crossterm events arrive via a dedicated thread → tokio channel.
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<Event>();

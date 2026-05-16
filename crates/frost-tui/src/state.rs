@@ -1,5 +1,7 @@
 use frost_core::ProcessStatus;
 
+use crate::selection::Selection;
+
 /// Which overlay is currently open, if any.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Overlay {
@@ -30,6 +32,9 @@ pub struct AppState {
     pub tick_count: u64,
     /// Current terminal dimensions.
     pub terminal_size: (u16, u16),
+    /// Last (cols, rows) that the log pane was sized to. Used to dedupe
+    /// PTY resize calls during continuous drag-resize events.
+    pub last_pty_dims: (u16, u16),
     /// Flattened tree selection index (visible items only).
     pub selected_index: usize,
     /// Which (project, app, subcommand) is currently selected for log viewing.
@@ -46,6 +51,9 @@ pub struct AppState {
     pub overlay_selected: usize,
     /// Which panel currently has keyboard focus.
     pub focus: Focus,
+    /// Active mouse selection in the log viewer, in PTY grid coordinates.
+    /// Cleared whenever the selected process changes.
+    pub selection: Option<Selection>,
 }
 
 impl Default for AppState {
@@ -54,6 +62,7 @@ impl Default for AppState {
             should_quit: false,
             tick_count: 0,
             terminal_size: (0, 0),
+            last_pty_dims: (0, 0),
             selected_index: 0,
             selected_process: None,
             log_scroll: 0,
@@ -62,6 +71,7 @@ impl Default for AppState {
             filter_text: String::new(),
             overlay_selected: 0,
             focus: Focus::Sidebar,
+            selection: None,
         }
     }
 }

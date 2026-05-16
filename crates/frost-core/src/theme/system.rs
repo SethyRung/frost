@@ -69,9 +69,7 @@ pub fn generate_system_theme(palette: &TerminalColors, mode: ThemeMode) -> Theme
 
     let defs: HashMap<String, crate::theme::types::ThemeDefValue> = HashMap::new();
 
-    let ramp_str = |idx: usize| -> String {
-        ramp[ramp_index(12, idx)].clone()
-    };
+    let ramp_str = |idx: usize| -> String { ramp[ramp_index(12, idx)].clone() };
 
     let muted_text_lum = if is_dark {
         bg_lum + 0.35
@@ -101,13 +99,34 @@ pub fn generate_system_theme(palette: &TerminalColors, mode: ThemeMode) -> Theme
     );
 
     let mut theme = HashMap::new();
-    theme.insert("primary".to_string(), ThemeValue::String(semantic_from_ansi(palette, 4)));
-    theme.insert("secondary".to_string(), ThemeValue::String(semantic_from_ansi(palette, 5)));
-    theme.insert("accent".to_string(), ThemeValue::String(semantic_from_ansi(palette, 6)));
-    theme.insert("error".to_string(), ThemeValue::String(semantic_from_ansi(palette, 1)));
-    theme.insert("warning".to_string(), ThemeValue::String(semantic_from_ansi(palette, 3)));
-    theme.insert("success".to_string(), ThemeValue::String(semantic_from_ansi(palette, 2)));
-    theme.insert("info".to_string(), ThemeValue::String(semantic_from_ansi(palette, 6)));
+    theme.insert(
+        "primary".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 4)),
+    );
+    theme.insert(
+        "secondary".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 5)),
+    );
+    theme.insert(
+        "accent".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 6)),
+    );
+    theme.insert(
+        "error".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 1)),
+    );
+    theme.insert(
+        "warning".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 3)),
+    );
+    theme.insert(
+        "success".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 2)),
+    );
+    theme.insert(
+        "info".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 6)),
+    );
     theme.insert("text".to_string(), ThemeValue::String(rgba_to_string(fg)));
     theme.insert(
         "textMuted".to_string(),
@@ -118,13 +137,12 @@ pub fn generate_system_theme(palette: &TerminalColors, mode: ThemeMode) -> Theme
     );
     theme.insert(
         "selectedListItemText".to_string(),
-        ThemeValue::String(if is_dark {
-            ramp_str(0)
-        } else {
-            ramp_str(11)
-        }),
+        ThemeValue::String(if is_dark { ramp_str(0) } else { ramp_str(11) }),
     );
-    theme.insert("background".to_string(), ThemeValue::String("transparent".to_string()));
+    theme.insert(
+        "background".to_string(),
+        ThemeValue::String("transparent".to_string()),
+    );
     theme.insert(
         "backgroundPanel".to_string(),
         ThemeValue::String(ramp_str(if is_dark { 1 } else { 10 })),
@@ -141,15 +159,30 @@ pub fn generate_system_theme(palette: &TerminalColors, mode: ThemeMode) -> Theme
         "border".to_string(),
         ThemeValue::String(ramp_str(if is_dark { 4 } else { 7 })),
     );
-    theme.insert("borderActive".to_string(), ThemeValue::String(semantic_from_ansi(palette, 4)));
+    theme.insert(
+        "borderActive".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 4)),
+    );
     theme.insert(
         "borderSubtle".to_string(),
         ThemeValue::String(ramp_str(if is_dark { 3 } else { 8 })),
     );
-    theme.insert("diffAdded".to_string(), ThemeValue::String(semantic_from_ansi(palette, 2)));
-    theme.insert("diffRemoved".to_string(), ThemeValue::String(semantic_from_ansi(palette, 1)));
-    theme.insert("diffContext".to_string(), ThemeValue::String(rgba_to_string(fg)));
-    theme.insert("diffHunkHeader".to_string(), ThemeValue::String(semantic_from_ansi(palette, 4)));
+    theme.insert(
+        "diffAdded".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 2)),
+    );
+    theme.insert(
+        "diffRemoved".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 1)),
+    );
+    theme.insert(
+        "diffContext".to_string(),
+        ThemeValue::String(rgba_to_string(fg)),
+    );
+    theme.insert(
+        "diffHunkHeader".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 4)),
+    );
     theme.insert(
         "diffHighlightAdded".to_string(),
         ThemeValue::String(semantic_from_ansi(palette, 2)),
@@ -166,7 +199,10 @@ pub fn generate_system_theme(palette: &TerminalColors, mode: ThemeMode) -> Theme
         "diffRemovedBg".to_string(),
         ThemeValue::String(rgba_to_string(diff_removed_bg)),
     );
-    theme.insert("diffContextBg".to_string(), ThemeValue::String(rgba_to_string(bg)));
+    theme.insert(
+        "diffContextBg".to_string(),
+        ThemeValue::String(rgba_to_string(bg)),
+    );
     theme.insert(
         "diffLineNumber".to_string(),
         ThemeValue::String(ramp_str(if is_dark { 5 } else { 6 })),
@@ -179,51 +215,90 @@ pub fn generate_system_theme(palette: &TerminalColors, mode: ThemeMode) -> Theme
         "diffRemovedLineNumberBg".to_string(),
         ThemeValue::String(rgba_to_string(diff_removed_bg)),
     );
-    theme.insert("markdownText".to_string(), ThemeValue::String(rgba_to_string(fg)));
+    theme.insert(
+        "markdownText".to_string(),
+        ThemeValue::String(rgba_to_string(fg)),
+    );
     theme.insert(
         "markdownHeading".to_string(),
         ThemeValue::String(semantic_from_ansi(palette, 4)),
     );
-    theme.insert("markdownLink".to_string(), ThemeValue::String(semantic_from_ansi(palette, 6)));
+    theme.insert(
+        "markdownLink".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 6)),
+    );
     theme.insert(
         "markdownLinkText".to_string(),
         ThemeValue::String(semantic_from_ansi(palette, 6)),
     );
-    theme.insert("markdownCode".to_string(), ThemeValue::String(semantic_from_ansi(palette, 3)));
+    theme.insert(
+        "markdownCode".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 3)),
+    );
     theme.insert(
         "markdownBlockQuote".to_string(),
         ThemeValue::String(ramp_str(if is_dark { 5 } else { 6 })),
     );
-    theme.insert("markdownEmph".to_string(), ThemeValue::String(semantic_from_ansi(palette, 5)));
-    theme.insert("markdownStrong".to_string(), ThemeValue::String(rgba_to_string(fg)));
+    theme.insert(
+        "markdownEmph".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 5)),
+    );
+    theme.insert(
+        "markdownStrong".to_string(),
+        ThemeValue::String(rgba_to_string(fg)),
+    );
     theme.insert(
         "markdownHorizontalRule".to_string(),
         ThemeValue::String(ramp_str(if is_dark { 4 } else { 7 })),
     );
-    theme.insert("markdownListItem".to_string(), ThemeValue::String(rgba_to_string(fg)));
+    theme.insert(
+        "markdownListItem".to_string(),
+        ThemeValue::String(rgba_to_string(fg)),
+    );
     theme.insert(
         "markdownListEnumeration".to_string(),
         ThemeValue::String(semantic_from_ansi(palette, 5)),
     );
-    theme.insert("markdownImage".to_string(), ThemeValue::String(semantic_from_ansi(palette, 6)));
+    theme.insert(
+        "markdownImage".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 6)),
+    );
     theme.insert(
         "markdownImageText".to_string(),
         ThemeValue::String(semantic_from_ansi(palette, 6)),
     );
-    theme.insert("markdownCodeBlock".to_string(), ThemeValue::String(rgba_to_string(bg)));
+    theme.insert(
+        "markdownCodeBlock".to_string(),
+        ThemeValue::String(rgba_to_string(bg)),
+    );
     theme.insert(
         "syntaxComment".to_string(),
         ThemeValue::String(ramp_str(if is_dark { 5 } else { 6 })),
     );
-    theme.insert("syntaxKeyword".to_string(), ThemeValue::String(semantic_from_ansi(palette, 5)));
+    theme.insert(
+        "syntaxKeyword".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 5)),
+    );
     theme.insert(
         "syntaxFunction".to_string(),
         ThemeValue::String(semantic_from_ansi(palette, 4)),
     );
-    theme.insert("syntaxVariable".to_string(), ThemeValue::String(rgba_to_string(fg)));
-    theme.insert("syntaxString".to_string(), ThemeValue::String(semantic_from_ansi(palette, 2)));
-    theme.insert("syntaxNumber".to_string(), ThemeValue::String(semantic_from_ansi(palette, 3)));
-    theme.insert("syntaxType".to_string(), ThemeValue::String(semantic_from_ansi(palette, 3)));
+    theme.insert(
+        "syntaxVariable".to_string(),
+        ThemeValue::String(rgba_to_string(fg)),
+    );
+    theme.insert(
+        "syntaxString".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 2)),
+    );
+    theme.insert(
+        "syntaxNumber".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 3)),
+    );
+    theme.insert(
+        "syntaxType".to_string(),
+        ThemeValue::String(semantic_from_ansi(palette, 3)),
+    );
     theme.insert(
         "syntaxOperator".to_string(),
         ThemeValue::String(semantic_from_ansi(palette, 6)),

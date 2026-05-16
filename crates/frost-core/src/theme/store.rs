@@ -151,7 +151,11 @@ impl ThemeStore {
         if let Some(path) = &self.persist_path {
             let state = PersistedThemeState {
                 active: self.active.clone(),
-                mode: if self.lock.is_some() { Some(self.mode) } else { None },
+                mode: if self.lock.is_some() {
+                    Some(self.mode)
+                } else {
+                    None
+                },
                 lock: self.lock,
             };
             if let Ok(json) = serde_json::to_string_pretty(&state) {

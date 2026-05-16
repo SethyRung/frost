@@ -17,12 +17,25 @@ pub enum Action {
     ScrollUp,
     /// Scroll log viewer down (PageDown).
     ScrollDown,
-    /// Jump to bottom of log viewer (End).
+    /// Jump to bottom of log viewer (End / Shift+End).
     ScrollBottom,
+    /// Jump to the very top of the scrollback (Shift+Home).
+    ScrollTop,
     /// Switch focus between sidebar and log viewer.
     ToggleFocus,
     /// Write raw bytes to the focused process's PTY stdin.
     WriteInput(Vec<u8>),
+    /// Forward a pasted string to the focused process. The handler wraps
+    /// the bytes in bracketed-paste delimiters when the child has DEC
+    /// mode 2004 enabled and otherwise sends them raw.
+    Paste(String),
+    /// A mouse event in terminal coordinates. The handler decides whether
+    /// to forward it to the PTY (when the child has mouse reporting on)
+    /// or to consume it locally for scrollback / selection.
+    Mouse(crossterm::event::MouseEvent),
+    /// Copy the current log-viewer selection to the system clipboard.
+    /// Bound to Ctrl+Shift+C in the log viewer; no-op when no selection.
+    CopySelection,
 
     // Overlays
     /// Open the command palette.

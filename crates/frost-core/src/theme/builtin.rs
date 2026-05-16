@@ -4,13 +4,11 @@ use std::collections::HashMap;
 pub const DEFAULT_THEME_ID: &str = "opencode";
 
 macro_rules! load_theme {
-    ($themes:expr, $name:expr, $path:expr) => {
-        {
-            let json: ThemeJson = serde_json::from_str(include_str!($path))
-                .expect(concat!("Failed to parse built-in theme: ", $name));
-            $themes.insert($name.to_string(), json);
-        }
-    };
+    ($themes:expr, $name:expr, $path:expr) => {{
+        let json: ThemeJson = serde_json::from_str(include_str!($path))
+            .expect(concat!("Failed to parse built-in theme: ", $name));
+        $themes.insert($name.to_string(), json);
+    }};
 }
 
 pub fn builtin_themes() -> HashMap<String, ThemeJson> {
@@ -22,8 +20,16 @@ pub fn builtin_themes() -> HashMap<String, ThemeJson> {
     load_theme!(themes, "ayu", "../../../../themes/ayu.json");
     load_theme!(themes, "carbonfox", "../../../../themes/carbonfox.json");
     load_theme!(themes, "catppuccin", "../../../../themes/catppuccin.json");
-    load_theme!(themes, "catppuccin-frappe", "../../../../themes/catppuccin-frappe.json");
-    load_theme!(themes, "catppuccin-macchiato", "../../../../themes/catppuccin-macchiato.json");
+    load_theme!(
+        themes,
+        "catppuccin-frappe",
+        "../../../../themes/catppuccin-frappe.json"
+    );
+    load_theme!(
+        themes,
+        "catppuccin-macchiato",
+        "../../../../themes/catppuccin-macchiato.json"
+    );
     load_theme!(themes, "cobalt2", "../../../../themes/cobalt2.json");
     load_theme!(themes, "cursor", "../../../../themes/cursor.json");
     load_theme!(themes, "everforest", "../../../../themes/everforest.json");
