@@ -1,71 +1,61 @@
 # AGENTS.md — Frost
 
-## Project Identity
+## Project
 
-- **Frost** (package name `frost`) — a terminal UI for managing local dev services across multiple projects.
-- "App Manager" is the tagline only; all code, files, and commands use `frost`.
-- Core differentiator: **project-grouped context switching** (start/stop entire stacks with one command).
+Terminal UI for managing local dev services across multiple projects. Keyboard-driven dashboard to start/stop/monitor dev servers, grouped by project.
 
-## Tech Stack (Non-Negotiable)
+The **Rust workspace** (root `Cargo.toml`) is the active codebase. `ts/` is a legacy TypeScript implementation (has its own `AGENTS.md`).
 
-- **Runtime**: Bun (exclusive). Do not add Node-specific tooling.
-- **TUI Framework**: OpenTUI React bindings (`@opentui/react`). Do NOT use Ink, Blessed, or other React TUI libraries.
-- **Process Management**: Native `Bun.spawn()`. No pm2, docker-compose, etc. Docker support is post-MVP.
-- **Language**: TypeScript + TSX. JSX transform is `react-jsx` via `@opentui/react` (`tsconfig.json`). No `import React` needed.
-- **Config**: `frost.json` / `frost.jsonc` — JSON/JSONC.
-- **State**: `~/.frost/state.json`.
+## Workspace Layout
 
-## Developer Commands
+| Path | Role |
+|---|---|
+| `crates/frost-core` | Library crate — config loading, process management (PTY), state persistence, theme system |
+| `crates/frost-tui` | Binary crate (`frost`) — ratatui TUI, event loop, UI components |
+| `themes/*.json` | 33 built-in opencode-compatible themes, embedded at compile time |
+| `frost.toml` | Example/user config (project-local) |
 
-| Command                     | What it does                                                         |
-| --------------------------- | -------------------------------------------------------------------- |
-| `bun install`               | Install dependencies (uses `bun.lock`)                               |
-| `bun dev`                   | Run TUI in watch mode (`bun run --watch src/index.tsx`)              |
-| `bun test`                  | Run all tests with `bun:test`                                        |
-| `bun test <path>`           | Run a single test file (e.g. `bun test tests/config/loader.test.ts`) |
-| `bun typecheck`             | `tsc --noEmit`                                                       |
-| `bun lint` / `bun lint:fix` | oxlint                                                               |
-| `bun fmt` / `bun fmt:check` | oxfmt                                                                |
+Binary entrypoint: `crates/frost-tui/src/main.rs`.
 
-## TypeScript & Style
+## Commands
 
-- `verbatimModuleSyntax: true` — use **`import type`** for type-only imports.
-- `noUnusedLocals: false`, `noUnusedParameters: false` — unused vars are not compile errors.
-- Linter: **oxlint** (`oxlint.config.ts`). Formatter: **oxfmt** (`oxfmt.config.ts`).
-- oxfmt style: 2 spaces, double quotes, trailing commas, semis, printWidth 100.
-- `tests/fixtures` is in the oxfmt ignore list.
+| Command | Purpose |
+|---|---|
+| `cargo run` | Build and run the TUI |
+| `cargo test` | Run all tests (inline `#[cfg(test)]` modules) |
+| `cargo test -p frost-core` | Test only the core crate |
+| `cargo fmt` | Format Rust sources |
+| `cargo clippy` | Lint Rust sources |
+| `taplo fmt` | Format TOML files (`.taplo.toml` config: 2-space indent, 100 col width) |
+| `taplo check` | Validate TOML without changes |
 
-## Source Layout
+Install taplo: `cargo install taplo-cli --locked`
 
-- `src/index.tsx` — TUI entrypoint. Not exported as a library.
-- `src/config/` — config types and loader (`findConfig` / `loadConfig`).
-- `src/process/` — `ProcessManager`, `spawnApp`, log ring buffer (max 1000 lines).
-- `src/state/` — `StateStore` (JSON persistence, 500ms debounce).
-- `src/tui/` — **Empty right now**. Dashboard React components and hooks go here (see `Plan.md`).
-- `tests/` — mirrors `src/`. `tests/fixtures/frost.json` is used by config loader tests.
+No CI workflows exist yet.
 
-## Config Loader Quirks
+## Rust Specifics
 
-- Searches for **`frost.json`** first (then `frost.jsonc`) by walking up from cwd.
-- Loader parses JSONC directly (comments/trailing commas supported) and validates schema; no runtime TS evaluation.
+- **Edition 2024** — requires Rust 1.85+.
+- **Workspace resolver 3** (`resolver = "3"` in root `Cargo.toml`).
+- Tests use `tempfile` for isolated filesystem fixtures. No external test runner.
 
-## Process Manager Quirks
+## Config Format
 
-- `spawnApp` splits the command string on spaces (`command.split(" ")`) — **no shell interpolation**. Use `sh -c "..."` if you need pipes, `&&`, or variable expansion.
-- `ProcessManager` emits events: `log`, `stateChange`, `exit`.
-- Exit code `143` (SIGTERM) is treated as `stopped`, not `crashed`.
+Rust version reads **TOML** (`frost.toml`) first, falls back to `frost.json`. Walks up from cwd to find config.
 
-## State Persistence Quirks
+Key schema: `FrostConfig { projects: HashMap<String, ProjectConfig> }` where each project has `apps` with `command` or `commands` (named sub-commands). See `crates/frost-core/src/config/schema.rs`.
 
-- `StateStore` uses `process.env.HOME` (fallback `/root`) to resolve `~/.frost/state.json`.
-- Tests override `HOME` to a temp directory (`/tmp/frost-state-test`) to avoid polluting the real state file.
+Workdir resolution chain: sub-command → app → project → config file directory.
 
-## Scope Guardrails
+## Architecture Notes
 
-- **MVP** (current focus): config loading, process spawning, state persistence, basic TUI layout.
-- **Do not build yet**: headless CLI commands, health checks, auto-restart, config hot-reload, search/filter, themes, Docker support.
-- No daemon mode — the TUI _is_ the long-running process.
+- **Process I/O**: Uses `portable-pty` + `alacritty_terminal` for real PTY-backed terminal emulation — not simple pipe capture. This gives full ANSI/VT rendering.
+- **Screen updates**: `ProcessManager` broadcasts `ScreenUpdate` via `tokio::broadcast`. The TUI subscribes and redraws on new output or a 250ms tick.
+- **Race condition guard**: `generation_id` on processes prevents stale exit callbacks from overwriting newer spawn state.
+- **Theme system**: `Registry → Resolver → Store`. Resolver expands `defs`, selects `dark`/`light` mode, resolves accent aliases, and parses hex to RGBA. Compatible with opencode `ThemeJson` format.
+- **State persistence**: `~/.frost/state.json` via `StateStore` with 500ms debounced writes (same format as TS version).
 
-## References
+## Style
 
-- `Plan.md` — implementation roadmap (Phases 0–5). Not all phases are implemented yet.
+- Rust: `cargo fmt` defaults. No custom rustfmt config.
+- TOML: `.taplo.toml` — 2-space indent, 100 column width, `reorder_keys = false` (except dependency tables which are sorted).
