@@ -1,0 +1,21 @@
+# taplo configuration — TOML formatter and linter for Frost
+# https://taplo.tamasfe.dev
+
+[formatting]
+indent_string = "  "
+column_width = 100
+reorder_keys = false
+reorder_arrays = false
+inline_table_expand = true
+
+[[rule]]
+keys = ["workdir", "command", "default"]
+
+[[rule]]
+keys = ["cwd"]
+
+[[rule]]
+# dependencies tables should have keys sorted
+include = ["**/Cargo.toml", "**/Cargo.lock"]
+keys = ["dependencies", "build-dependencies", "dev-dependencies"]
+reorder_keys = true
