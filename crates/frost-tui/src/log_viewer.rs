@@ -12,6 +12,8 @@ use frost_core::{DisplayLine, ProcessManager, RGBA};
 pub struct LogViewer {
     pub lines: Vec<DisplayLine>,
     pub scroll: usize,
+    pub scrolled: bool,
+    pub focused: bool,
 }
 
 impl LogViewer {
@@ -19,6 +21,8 @@ impl LogViewer {
         Self {
             lines: Vec::new(),
             scroll: 0,
+            scrolled: false,
+            focused: false,
         }
     }
 
@@ -27,11 +31,14 @@ impl LogViewer {
         project: &str,
         app: &str,
         subcommand: &str,
+        scroll: usize,
+        focused: bool,
     ) -> Self {
         let lines = manager
             .get_display_lines(project, app, subcommand)
             .unwrap_or_default();
-        Self { lines, scroll: 0 }
+        let scrolled = scroll > 0;
+        Self { lines, scroll, scrolled, focused }
     }
 }
 
@@ -45,10 +52,18 @@ fn rgba_to_ratatui(rgba: RGBA) -> Color {
 
 impl Widget for LogViewer {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let border_color = if self.focused { Color::Green } else { Color::DarkGray };
+        let title = if self.focused {
+            " Log (interactive) "
+        } else if self.scrolled {
+            " Log (scrolled) "
+        } else {
+            " Log "
+        };
         let block = Block::default()
-            .title(" Log ")
+            .title(title)
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Green));
+            .border_style(Style::default().fg(border_color));
         let inner = block.inner(area);
         block.render(area, buf);
 

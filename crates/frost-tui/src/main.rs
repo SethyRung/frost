@@ -36,11 +36,12 @@ async fn main() -> Result<()> {
     // Set up terminal.
     let mut terminal = setup_terminal()?;
 
-    // Create the process manager.
+    // Create the process manager and subscribe to screen updates.
     let process_manager = ProcessManager::new();
+    let mut screen_rx = process_manager.subscribe_screen();
 
     // Run the app.
-    let result = run_app(&mut terminal, process_manager, config, config_path).await;
+    let result = run_app(&mut terminal, process_manager, config, config_path, &mut screen_rx).await;
 
     // Restore terminal regardless of result.
     restore_terminal(&mut terminal)?;
@@ -102,6 +103,7 @@ async fn run_app(
     process_manager: ProcessManager,
     config: frost_core::FrostConfig,
     config_path: PathBuf,
+    screen_rx: &mut tokio::sync::broadcast::Receiver<frost_core::ScreenUpdate>,
 ) -> Result<()> {
     let mut app = App::new(process_manager, config, config_path);
 
@@ -116,12 +118,23 @@ async fn run_app(
         // Draw current frame.
         terminal.draw(|frame| app.draw(frame))?;
 
-        // Wait for the next event or tick.
+        // Wait for the next event, tick, or screen update.
         tokio::select! {
             Some(event) = event_rx.recv() => {
                 let overlay = app.state.overlay;
-                if let Some(action) = input::handle_event(event, overlay) {
+                let focus = app.state.focus;
+                if let Some(action) = input::handle_event(event, overlay, focus) {
                     app.handle_action(action);
+                }
+            }
+            result = screen_rx.recv() => {
+                match result {
+                    Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                        // New output arrived — redraw will happen on next loop iteration.
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                        // All senders dropped — shouldn't happen.
+                    }
                 }
             }
             _ = tick_interval.tick() => {
@@ -133,6 +146,9 @@ async fn run_app(
             break;
         }
     }
+
+    // Clean shutdown: stop all running processes.
+    app.shutdown();
 
     Ok(())
 }

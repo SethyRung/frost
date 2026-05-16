@@ -243,6 +243,20 @@ impl ProcessManager {
         Some(extract_lines(&term))
     }
 
+    /// Get the cursor position (line, column) for a process's terminal emulator.
+    pub fn get_cursor_position(
+        &self,
+        project: &str,
+        app: &str,
+        subcommand: &str,
+    ) -> Option<(usize, usize)> {
+        let key = (project.to_string(), app.to_string(), subcommand.to_string());
+        let state = self.processes.get(&key)?;
+        let term = state.terminal.lock().unwrap();
+        let point = term.grid().cursor.point;
+        Some((point.line.0 as usize, point.column.0))
+    }
+
     /// Remove a stopped process from the manager.
     pub fn remove(&mut self, project: &str, app: &str, subcommand: &str) {
         let key = (project.to_string(), app.to_string(), subcommand.to_string());
@@ -262,6 +276,21 @@ impl ProcessManager {
                 generation_id: s.generation_id,
             })
             .collect()
+    }
+
+    /// Write raw bytes to a running process's PTY stdin.
+    pub fn write_stdin(
+        &mut self,
+        project: &str,
+        app: &str,
+        subcommand: &str,
+        data: &[u8],
+    ) -> Result<(), ProcessError> {
+        let key = (project.to_string(), app.to_string(), subcommand.to_string());
+        let state = self.processes.get_mut(&key).ok_or_else(|| {
+            ProcessError::NotFound(project.to_string(), app.to_string(), subcommand.to_string())
+        })?;
+        state.pty.write_stdin(data)
     }
 
     pub fn subscribe_screen(&self) -> broadcast::Receiver<ScreenUpdate> {

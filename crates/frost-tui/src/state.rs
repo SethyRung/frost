@@ -8,6 +8,19 @@ pub enum Overlay {
     ThemeDialog,
 }
 
+/// Which panel currently holds keyboard focus.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Focus {
+    Sidebar,
+    LogViewer,
+}
+
+impl Default for Focus {
+    fn default() -> Self {
+        Self::Sidebar
+    }
+}
+
 /// Global TUI state machine.
 #[derive(Debug)]
 pub struct AppState {
@@ -22,7 +35,6 @@ pub struct AppState {
     /// Which (project, app, subcommand) is currently selected for log viewing.
     pub selected_process: Option<(String, String, String)>,
     /// Scroll offset for the log viewer (0 = bottom / auto-scroll).
-    #[allow(dead_code)]
     pub log_scroll: usize,
     /// Number of currently running processes.
     pub running_count: usize,
@@ -32,6 +44,8 @@ pub struct AppState {
     pub filter_text: String,
     /// Selected index within the overlay list.
     pub overlay_selected: usize,
+    /// Which panel currently has keyboard focus.
+    pub focus: Focus,
 }
 
 impl Default for AppState {
@@ -47,6 +61,7 @@ impl Default for AppState {
             overlay: None,
             filter_text: String::new(),
             overlay_selected: 0,
+            focus: Focus::Sidebar,
         }
     }
 }

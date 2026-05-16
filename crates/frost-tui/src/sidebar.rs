@@ -26,6 +26,7 @@ pub enum TreeItemKind {
     Project,
     App,
     Subcommand,
+    Terminal,
 }
 
 /// Build the flattened list of visible tree items from config + expanded state.
@@ -63,6 +64,14 @@ pub fn build_visible_tree(config: &FrostConfig, expanded: &HashSet<String>) -> V
             if !expanded.contains(&app_path) {
                 continue;
             }
+
+            let term_path = format!("{}/{}/terminal", project_name, app_name);
+            items.push(TreeItem {
+                kind: TreeItemKind::Terminal,
+                name: "terminal".to_string(),
+                path: term_path,
+                depth: 2,
+            });
 
             let mut sub_names: Vec<_> = if let Some(cmds) = &app.commands {
                 cmds.keys().cloned().collect()
@@ -102,14 +111,16 @@ pub struct Sidebar<'a> {
     pub expanded: &'a HashSet<String>,
     pub selected_index: usize,
     pub process_manager: &'a ProcessManager,
+    pub focused: bool,
 }
 
 impl<'a> Widget for Sidebar<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let border_color = if self.focused { Color::Cyan } else { Color::DarkGray };
         let block = Block::default()
             .title(" Projects ")
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan));
+            .border_style(Style::default().fg(border_color));
         let inner = block.inner(area);
         block.render(area, buf);
 
@@ -153,19 +164,20 @@ impl<'a> Widget for Sidebar<'a> {
                         "▶ "
                     }
                 }
-                TreeItemKind::Subcommand => "  ",
+                TreeItemKind::Terminal | TreeItemKind::Subcommand => "  ",
             };
 
-            let status = if item.kind == TreeItemKind::Subcommand {
-                let parts: Vec<_> = item.path.split('/').collect();
-                if parts.len() == 3 {
-                    let status = get_status(self.process_manager, parts[0], parts[1], parts[2]);
-                    format!("{} ", AppState::status_icon(status))
-                } else {
-                    String::new()
+            let status = match item.kind {
+                TreeItemKind::Terminal | TreeItemKind::Subcommand => {
+                    let parts: Vec<_> = item.path.split('/').collect();
+                    if parts.len() == 3 {
+                        let status = get_status(self.process_manager, parts[0], parts[1], parts[2]);
+                        format!("{} ", AppState::status_icon(status))
+                    } else {
+                        String::new()
+                    }
                 }
-            } else {
-                String::new()
+                _ => String::new(),
             };
 
             let text = format!("{}{}{}{}", indent, prefix, status, item.name);

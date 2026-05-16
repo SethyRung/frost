@@ -13,6 +13,16 @@ pub enum Action {
     Down,
     /// Toggle expand/collapse (project/app) or start/stop (subcommand).
     Toggle,
+    /// Scroll log viewer up (PageUp).
+    ScrollUp,
+    /// Scroll log viewer down (PageDown).
+    ScrollDown,
+    /// Jump to bottom of log viewer (End).
+    ScrollBottom,
+    /// Switch focus between sidebar and log viewer.
+    ToggleFocus,
+    /// Write raw bytes to the focused process's PTY stdin.
+    WriteInput(Vec<u8>),
 
     // Overlays
     /// Open the command palette.

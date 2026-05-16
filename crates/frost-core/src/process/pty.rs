@@ -17,11 +17,12 @@ pub enum ProcessError {
 }
 
 /// A spawned PTY process.  Holds the master end (for reading output
-/// and resizing) and the child handle.
+/// and resizing), a writer for forwarding stdin, and the child handle.
 pub struct PtyProcess {
     pub pid: u32,
     pub master: Box<dyn portable_pty::MasterPty + Send>,
     pub reader: Box<dyn std::io::Read + Send>,
+    pub writer: Box<dyn std::io::Write + Send>,
     pub child: Box<dyn portable_pty::Child + Send + Sync>,
 }
 
@@ -30,6 +31,13 @@ impl PtyProcess {
     pub fn kill_process_group(&self) -> Result<(), ProcessError> {
         let pid = Pid::from_raw(self.pid as i32);
         kill(Pid::from_raw(-pid.as_raw()), Signal::SIGTERM)?;
+        Ok(())
+    }
+
+    /// Write raw bytes to the PTY master (sends stdin to child process).
+    pub fn write_stdin(&mut self, data: &[u8]) -> Result<(), ProcessError> {
+        use std::io::Write;
+        self.writer.write_all(data)?;
         Ok(())
     }
 
@@ -84,10 +92,15 @@ pub fn spawn_pty(
         .try_clone_reader()
         .map_err(|e| ProcessError::Pty(e.to_string()))?;
 
+    let writer = pair.master
+        .take_writer()
+        .map_err(|e| ProcessError::Pty(e.to_string()))?;
+
     Ok(PtyProcess {
         pid,
         master: pair.master,
         reader,
+        writer,
         child,
     })
 }

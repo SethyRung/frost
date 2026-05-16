@@ -114,6 +114,7 @@ impl Widget for SearchDialog {
             let prefix = match item.kind {
                 crate::sidebar::TreeItemKind::Project => "📁 ",
                 crate::sidebar::TreeItemKind::App => "  📂 ",
+                crate::sidebar::TreeItemKind::Terminal => "    >_ ",
                 crate::sidebar::TreeItemKind::Subcommand => "    ⚡ ",
             };
             let text = format!("{}{}", prefix, item.path);

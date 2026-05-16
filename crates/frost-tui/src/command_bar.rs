@@ -25,8 +25,10 @@ impl Widget for CommandBar {
             Span::styled(":quit  ", Style::default().fg(Color::Gray)),
             Span::styled("↑↓", Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD)),
             Span::styled(":nav  ", Style::default().fg(Color::Gray)),
-            Span::styled("Enter/Space", Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD)),
+            Span::styled("Enter", Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD)),
             Span::styled(":toggle  ", Style::default().fg(Color::Gray)),
+            Span::styled("PgUp/Dn", Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD)),
+            Span::styled(":scroll  ", Style::default().fg(Color::Gray)),
         ];
 
         let count_spans = vec![
