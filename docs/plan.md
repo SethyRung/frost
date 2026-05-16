@@ -705,14 +705,14 @@ The `frost-core` crate enables this — the CLI is just another consumer.
 
 ### Phase 1 — Foundation (core only, no TUI)
 
-- [ ] `frost-core/src/config/` — types + TOML loader + flattening
-- [ ] `frost-core/src/theme/types.rs` — ThemeJson, ResolvedTheme, RGBA
-- [ ] `frost-core/src/theme/builtin.rs` — embed 33 themes
-- [ ] `frost-core/src/theme/resolver.rs` — color resolution pipeline
-- [ ] `frost-core/src/theme/system.rs` — terminal palette → theme generation
-- [ ] `frost-core/src/theme/registry.rs` + `store.rs` — theme management
-- [ ] `frost-core/src/state/` — StateStore with persistence
-- [ ] Unit tests for all core modules
+- [x] `frost-core/src/config/` — types + TOML loader + flattening
+- [x] `frost-core/src/theme/types.rs` — ThemeJson, ResolvedTheme, RGBA
+- [x] `frost-core/src/theme/builtin.rs` — embed 33 themes
+- [x] `frost-core/src/theme/resolver.rs` — color resolution pipeline
+- [x] `frost-core/src/theme/system.rs` — terminal palette → theme generation
+- [x] `frost-core/src/theme/registry.rs` + `store.rs` — theme management
+- [x] `frost-core/src/state/` — StateStore with persistence
+- [x] Unit tests for all core modules
 
 ### Phase 2 — Process Management
 
