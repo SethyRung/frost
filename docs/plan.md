@@ -724,12 +724,12 @@ The `frost-core` crate enables this — the CLI is just another consumer.
 
 ### Phase 3 — TUI Shell
 
-- [ ] `frost-tui/src/main.rs` — event loop, terminal setup/teardown
-- [ ] `frost-tui/src/actions.rs` — Action enum
-- [ ] `frost-tui/src/input.rs` — crossterm key → Action mapping
-- [ ] `frost-tui/src/state.rs` — TUI state machine
-- [ ] `frost-tui/src/app.rs` — top-level App struct
-- [ ] Layout skeleton (sidebar + log + command bar, no widgets)
+- [x] `frost-tui/src/main.rs` — event loop, terminal setup/teardown
+- [x] `frost-tui/src/actions.rs` — Action enum
+- [x] `frost-tui/src/input.rs` — crossterm key → Action mapping
+- [x] `frost-tui/src/state.rs` — TUI state machine
+- [x] `frost-tui/src/app.rs` — top-level App struct
+- [x] Layout skeleton (sidebar + log + command bar, no widgets)
 
 ### Phase 4 — Widgets
 
