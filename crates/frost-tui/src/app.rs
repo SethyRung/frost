@@ -9,7 +9,8 @@ use ratatui::{
 
 use crossterm::event::{KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use frost_core::{
-    FrostConfig, ProcessManager, ProcessStatus, RuntimeCommand, ThemeRegistry, flatten_config,
+    FrostConfig, ProcessManager, ProcessStatus, RuntimeCommand, ThemeRegistry,
+    ThemeStore, flatten_config, ResolvedTheme,
 };
 
 use crate::{
@@ -21,6 +22,7 @@ use crate::{
     selection::{GridPoint, Selection},
     sidebar::{Sidebar, TreeItemKind, build_visible_tree},
     state::{AppState, Focus, Overlay},
+    theme_adapter::to_color,
     theme_dialog::ThemeDialog,
 };
 
@@ -162,8 +164,9 @@ pub struct App {
     pub flattened: Vec<RuntimeCommand>,
     #[allow(dead_code)]
     pub config_path: PathBuf,
-    pub theme_registry: ThemeRegistry,
-    pub active_theme: String,
+    pub theme_store: ThemeStore,
+    pub resolved_theme: Option<ResolvedTheme>,
+    pub state_store: frost_core::StateStore,
 }
 
 impl App {
@@ -175,13 +178,40 @@ impl App {
     ) -> Self {
         let flattened = flatten_config(&config, &config_path);
 
+        // Set up theme store.
+        let theme_persist = dirs::home_dir()
+            .map(|h| h.join(".frost/theme.json"))
+            .unwrap_or_else(|| PathBuf::from(".frost/theme.json"));
+        let mut theme_store = ThemeStore::new(ThemeRegistry::with_builtin_themes())
+            .with_persist_path(&theme_persist);
+        theme_store.load_persisted();
+
+        // Set up state store.
+        let mut state_store = frost_core::StateStore::new();
+        state_store.load();
+
+        // Apply persisted theme if valid.
+        if let Some(theme_id) = &state_store.state().active_theme {
+            theme_store.set(theme_id);
+        }
+
+        // Build expanded set: all projects and apps expanded by default,
+        // restricted to persisted state if present.
         let mut expanded = HashSet::new();
         for project_name in config.projects.keys() {
             expanded.insert(project_name.clone());
         }
-        for rt_cmd in &flattened {
-            let app_path = format!("{}/{}", rt_cmd.project_name, rt_cmd.app_name);
-            expanded.insert(app_path);
+
+        let persisted = &state_store.state().expanded_apps;
+        if !persisted.is_empty() {
+            for app_path in persisted {
+                expanded.insert(app_path.clone());
+            }
+        } else {
+            for rt_cmd in &flattened {
+                let app_path = format!("{}/{}", rt_cmd.project_name, rt_cmd.app_name);
+                expanded.insert(app_path);
+            }
         }
 
         // Pretend we just resized to current dims so the first real Resize
@@ -192,6 +222,8 @@ impl App {
             ..AppState::default()
         };
 
+        let resolved_theme = theme_store.get_resolved().cloned();
+
         let mut app = Self {
             state,
             process_manager: Arc::new(Mutex::new(process_manager)),
@@ -199,14 +231,19 @@ impl App {
             expanded,
             flattened,
             config_path,
-            theme_registry: ThemeRegistry::with_builtin_themes(),
-            active_theme: "opencode".to_string(),
+            theme_store,
+            resolved_theme,
+            state_store,
         };
 
         app.start_all_terminals();
         app.auto_select_first();
 
         app
+    }
+
+    fn refresh_theme(&mut self) {
+        self.resolved_theme = self.theme_store.get_resolved().cloned();
     }
 
     /// Apply an incoming action to mutate state.
@@ -294,6 +331,7 @@ impl App {
                     items: crate::palette::default_items(),
                     selected: self.state.overlay_selected,
                     filter: self.state.filter_text.clone(),
+                    theme: self.resolved_theme.as_ref(),
                 };
                 if let Some(action) = palette.selected_action() {
                     match action {
@@ -321,6 +359,7 @@ impl App {
                     items,
                     selected: self.state.overlay_selected,
                     filter: self.state.filter_text.clone(),
+                    theme: self.resolved_theme.as_ref(),
                 };
                 if let Some(item) = dialog.selected_item() {
                     // Find the index of this item in the visible tree.
@@ -335,15 +374,17 @@ impl App {
                 self.state.overlay_selected = 0;
             }
             Some(Overlay::ThemeDialog) => {
-                let themes = self.theme_registry.get_ids();
+                let themes = self.theme_store.get_all().keys().cloned().collect();
                 let dialog = ThemeDialog {
                     themes,
                     selected: self.state.overlay_selected,
                     filter: self.state.filter_text.clone(),
-                    active_theme: self.active_theme.clone(),
+                    active_theme: self.theme_store.get_active().to_string(),
+                    theme: self.resolved_theme.as_ref(),
                 };
                 if let Some(theme) = dialog.selected_theme() {
-                    self.active_theme = theme;
+                    self.theme_store.set(&theme);
+                    self.refresh_theme();
                 }
                 self.state.overlay = None;
                 self.state.filter_text.clear();
@@ -821,20 +862,40 @@ impl App {
         }
     }
 
-    /// Stop all running processes.
+    /// Stop all running processes and persist state.
     pub fn shutdown(&mut self) {
-        let mut pm = self.process_manager.lock().unwrap();
-        let infos: Vec<_> = pm.list();
-        for info in infos {
-            if info.status == ProcessStatus::Running || info.status == ProcessStatus::Starting {
-                let _ = pm.stop(&info.project, &info.app, &info.subcommand);
+        // Stop processes.
+        {
+            let mut pm = self.process_manager.lock().unwrap();
+            let infos: Vec<_> = pm.list();
+            for info in infos {
+                if info.status == ProcessStatus::Running || info.status == ProcessStatus::Starting {
+                    let _ = pm.stop(&info.project, &info.app, &info.subcommand);
+                }
             }
         }
+
+        // Persist state.
+        let state = self.state_store.state_mut();
+        state.active_theme = Some(self.theme_store.get_active().to_string());
+        state.expanded_apps = self.expanded.iter().cloned().collect();
+        let _ = self.state_store.save_now();
     }
 
     /// Render the full layout.
     pub fn draw(&self, frame: &mut Frame) {
         let area = frame.area();
+
+        // Fill the entire terminal background with the theme background color.
+        if let Some(theme) = &self.resolved_theme {
+            let bg = to_color(theme.background);
+            let buf = frame.buffer_mut();
+            for y in area.y..area.y + area.height {
+                for x in area.x..area.x + area.width {
+                    buf[(x, y)].set_bg(bg);
+                }
+            }
+        }
 
         // Vertical split: main area + command bar at the bottom.
         let vert = Layout::default()
@@ -851,8 +912,9 @@ impl App {
         let sidebar_focused = self.state.focus == Focus::Sidebar;
         let log_focused = self.state.focus == Focus::LogViewer;
 
-        // Sidebar.
         let pm = self.process_manager.lock().unwrap();
+
+        // Sidebar.
         frame.render_widget(
             Sidebar {
                 config: &self.config,
@@ -860,6 +922,7 @@ impl App {
                 selected_index: self.state.selected_index,
                 process_manager: &*pm,
                 focused: sidebar_focused,
+                theme: self.resolved_theme.as_ref(),
             },
             horiz[0],
         );
@@ -894,6 +957,7 @@ impl App {
                 log_focused,
                 self.state.selection,
                 bell_active,
+                self.resolved_theme.as_ref(),
             )
         } else {
             LogViewer::empty()
@@ -930,6 +994,7 @@ impl App {
             CommandBar {
                 running_count: self.state.running_count,
                 focus: self.state.focus,
+                theme: self.resolved_theme.as_ref(),
             },
             vert[1],
         );
@@ -941,6 +1006,7 @@ impl App {
                     items: crate::palette::default_items(),
                     selected: self.state.overlay_selected,
                     filter: self.state.filter_text.clone(),
+                    theme: self.resolved_theme.as_ref(),
                 };
                 palette.clamp_selection();
                 frame.render_widget(palette, area);
@@ -951,17 +1017,19 @@ impl App {
                     items,
                     selected: self.state.overlay_selected,
                     filter: self.state.filter_text.clone(),
+                    theme: self.resolved_theme.as_ref(),
                 };
                 dialog.clamp_selection();
                 frame.render_widget(dialog, area);
             }
             Some(Overlay::ThemeDialog) => {
-                let themes = self.theme_registry.get_ids();
+                let themes: Vec<String> = self.theme_store.get_all().keys().cloned().collect();
                 let mut dialog = ThemeDialog {
                     themes,
                     selected: self.state.overlay_selected,
                     filter: self.state.filter_text.clone(),
-                    active_theme: self.active_theme.clone(),
+                    active_theme: self.theme_store.get_active().to_string(),
+                    theme: self.resolved_theme.as_ref(),
                 };
                 dialog.clamp_selection();
                 frame.render_widget(dialog, area);

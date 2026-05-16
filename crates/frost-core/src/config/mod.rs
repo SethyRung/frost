@@ -313,4 +313,19 @@ workdir = "./frontend"
         let result = load_config(&path);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_load_real_frost_toml() {
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let repo_root = manifest.parent().unwrap().parent().unwrap();
+        let config_path = repo_root.join("frost.toml");
+
+        assert!(config_path.exists(), "frost.toml should exist at repo root");
+
+        let config = load_config(&config_path).expect("should parse real frost.toml");
+        assert!(!config.projects.is_empty(), "should have at least one project");
+
+        let commands = flatten_config(&config, &config_path);
+        assert!(!commands.is_empty(), "should flatten to at least one command");
+    }
 }

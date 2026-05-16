@@ -1,27 +1,31 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Widget},
 };
 
+use frost_core::ResolvedTheme;
 use crate::sidebar::TreeItem;
+use crate::theme_adapter::to_color;
 
 /// Render the search overlay with fuzzy-filtered tree items.
-pub struct SearchDialog {
+pub struct SearchDialog<'a> {
     pub items: Vec<TreeItem>,
     pub selected: usize,
     pub filter: String,
+    pub theme: Option<&'a ResolvedTheme>,
 }
 
-impl SearchDialog {
+impl<'a> SearchDialog<'a> {
     #[allow(dead_code)]
     pub fn new(items: Vec<TreeItem>) -> Self {
         Self {
             items,
             selected: 0,
             filter: String::new(),
+            theme: None,
         }
     }
 
@@ -55,17 +59,25 @@ impl SearchDialog {
     }
 }
 
-impl Widget for SearchDialog {
+impl<'a> Widget for SearchDialog<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let overlay_area = center_rect(area, 50, 14);
         Clear.render(overlay_area, buf);
 
+        let border_color = self.theme.map(|t| to_color(t.accent)).unwrap_or(ratatui::style::Color::Cyan);
         let block = Block::default()
             .title(" Search ")
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan));
+            .border_style(Style::default().fg(border_color));
         let inner = block.inner(overlay_area);
         block.render(overlay_area, buf);
+
+        let placeholder_color = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::DarkGray);
+        let text_color = self.theme.map(|t| to_color(t.text)).unwrap_or(ratatui::style::Color::White);
+        let divider_color = self.theme.map(|t| to_color(t.border)).unwrap_or(ratatui::style::Color::DarkGray);
+        let selected_bg = self.theme.map(|t| to_color(t.background_panel));
+        let selected_fg = self.theme.map(|t| to_color(t.text)).unwrap_or(ratatui::style::Color::White);
+        let unselected_fg = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::Gray);
 
         // Filter input.
         let filter_text = if self.filter.is_empty() {
@@ -74,9 +86,9 @@ impl Widget for SearchDialog {
             &self.filter
         };
         let filter_style = if self.filter.is_empty() {
-            Style::default().fg(Color::DarkGray)
+            Style::default().fg(placeholder_color)
         } else {
-            Style::default().fg(Color::White)
+            Style::default().fg(text_color)
         };
         let line = Line::from(Span::styled(filter_text, filter_style));
         buf.set_line(inner.x, inner.y, &line, inner.width);
@@ -86,7 +98,7 @@ impl Widget for SearchDialog {
         buf.set_line(
             inner.x,
             inner.y + 1,
-            &Line::from(Span::styled(divider, Style::default().fg(Color::DarkGray))),
+            &Line::from(Span::styled(divider, Style::default().fg(divider_color))),
             inner.width,
         );
 
@@ -103,12 +115,15 @@ impl Widget for SearchDialog {
             let row = list_area.y + i as u16;
             let is_selected = i == self.selected;
             let style = if is_selected {
-                Style::default()
-                    .bg(Color::DarkGray)
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD)
+                let mut s = Style::default().fg(selected_fg).add_modifier(Modifier::BOLD);
+                if let Some(c) = selected_bg {
+                    s = s.bg(c);
+                } else {
+                    s = s.bg(ratatui::style::Color::DarkGray);
+                }
+                s
             } else {
-                Style::default().fg(Color::Gray)
+                Style::default().fg(unselected_fg)
             };
 
             let prefix = match item.kind {
@@ -123,7 +138,7 @@ impl Widget for SearchDialog {
         }
 
         if filtered.is_empty() {
-            let msg = Span::styled("No matches", Style::default().fg(Color::DarkGray));
+            let msg = Span::styled("No matches", Style::default().fg(placeholder_color));
             buf.set_line(list_area.x, list_area.y, &Line::from(msg), list_area.width);
         }
     }

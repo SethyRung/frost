@@ -412,6 +412,7 @@ dependencies = [
  "anyhow",
  "arboard",
  "crossterm 0.29.0",
+ "dirs",
  "frost-core",
  "ratatui",
  "tokio",

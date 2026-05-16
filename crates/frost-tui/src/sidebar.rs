@@ -3,14 +3,15 @@ use std::collections::HashSet;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Widget},
 };
 
-use frost_core::{FrostConfig, ProcessManager, ProcessStatus};
+use frost_core::{FrostConfig, ProcessManager, ProcessStatus, ResolvedTheme};
 
 use crate::state::AppState;
+use crate::theme_adapter::to_color;
 
 /// A visible node in the flattened sidebar tree.
 #[derive(Debug, Clone)]
@@ -117,15 +118,23 @@ pub struct Sidebar<'a> {
     pub selected_index: usize,
     pub process_manager: &'a ProcessManager,
     pub focused: bool,
+    pub theme: Option<&'a ResolvedTheme>,
 }
 
 impl<'a> Widget for Sidebar<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let border_color = if self.focused {
-            Color::Cyan
+        let border_color = if let Some(t) = self.theme {
+            if self.focused {
+                to_color(t.border_active)
+            } else {
+                to_color(t.border)
+            }
+        } else if self.focused {
+            ratatui::style::Color::Cyan
         } else {
-            Color::DarkGray
+            ratatui::style::Color::DarkGray
         };
+
         let block = Block::default()
             .title(" Projects ")
             .borders(Borders::ALL)
@@ -135,10 +144,8 @@ impl<'a> Widget for Sidebar<'a> {
 
         let items = build_visible_tree(self.config, self.expanded);
         if items.is_empty() {
-            let msg = Span::styled(
-                "No projects configured",
-                Style::default().fg(Color::DarkGray),
-            );
+            let msg_color = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::DarkGray);
+            let msg = Span::styled("No projects configured", Style::default().fg(msg_color));
             buf.set_line(inner.x, inner.y, &Line::from(msg), inner.width);
             return;
         }
@@ -160,9 +167,14 @@ impl<'a> Widget for Sidebar<'a> {
 
             let is_selected = start + i == selected_index;
             let style = if is_selected {
-                Style::default()
-                    .bg(Color::DarkGray)
-                    .add_modifier(Modifier::BOLD)
+                let bg = self.theme.map(|t| to_color(t.background_panel));
+                let mut s = Style::default().add_modifier(Modifier::BOLD);
+                if let Some(c) = bg {
+                    s = s.bg(c);
+                } else {
+                    s = s.bg(ratatui::style::Color::DarkGray);
+                }
+                s
             } else {
                 Style::default()
             };

@@ -26,6 +26,7 @@ mod search;
 mod selection;
 mod sidebar;
 mod state;
+mod theme_adapter;
 mod theme_dialog;
 
 #[tokio::main]

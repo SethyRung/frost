@@ -6,12 +6,13 @@ use ratatui::{
     widgets::{Block, Borders, Widget},
 };
 
-use frost_core::{DisplayLine, ProcessManager, RGBA, TerminalCell};
+use frost_core::{DisplayLine, ProcessManager, RGBA, ResolvedTheme, TerminalCell};
 
 use crate::selection::Selection;
+use crate::theme_adapter::to_color;
 
 /// Render the terminal log viewer.
-pub struct LogViewer {
+pub struct LogViewer<'a> {
     pub lines: Vec<DisplayLine>,
     pub scroll: usize,
     pub scrolled: bool,
@@ -22,9 +23,10 @@ pub struct LogViewer {
     /// True for ~150 ms after the child rings the bell (`\x07`).
     /// Repaints the border in yellow so the user sees the alert.
     pub bell_active: bool,
+    pub theme: Option<&'a ResolvedTheme>,
 }
 
-impl LogViewer {
+impl<'a> LogViewer<'a> {
     pub fn empty() -> Self {
         Self {
             lines: Vec::new(),
@@ -33,6 +35,7 @@ impl LogViewer {
             focused: false,
             selection: None,
             bell_active: false,
+            theme: None,
         }
     }
 
@@ -46,6 +49,7 @@ impl LogViewer {
         focused: bool,
         selection: Option<Selection>,
         bell_active: bool,
+        theme: Option<&'a ResolvedTheme>,
     ) -> Self {
         // Pull history + viewport so the scrollback nav keys can show
         // older output by moving `scroll` further from the bottom.
@@ -60,6 +64,7 @@ impl LogViewer {
             focused,
             selection,
             bell_active,
+            theme,
         }
     }
 }
@@ -119,10 +124,16 @@ fn cell_glyph(cell: &TerminalCell) -> String {
     }
 }
 
-impl Widget for LogViewer {
+impl<'a> Widget for LogViewer<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let border_color = if self.bell_active {
             Color::Yellow
+        } else if let Some(t) = self.theme {
+            if self.focused {
+                to_color(t.border_active)
+            } else {
+                to_color(t.border)
+            }
         } else if self.focused {
             Color::Green
         } else {
@@ -143,9 +154,10 @@ impl Widget for LogViewer {
         block.render(area, buf);
 
         if self.lines.is_empty() {
+            let msg_color = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(Color::DarkGray);
             let msg = Span::styled(
                 "No process selected — use sidebar to start one",
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(msg_color),
             );
             buf.set_line(inner.x, inner.y, &Line::from(msg), inner.width);
             return;
@@ -198,10 +210,8 @@ impl Widget for LogViewer {
 mod tests {
     use super::*;
     use crate::selection::{GridPoint, Selection};
-    use frost_core::RGBA;
     use ratatui::buffer::Buffer;
     use ratatui::layout::Rect;
-    use ratatui::style::Color;
 
     fn plain_cell(c: char, fg: RGBA, bg: RGBA) -> TerminalCell {
         TerminalCell {
@@ -252,9 +262,6 @@ mod tests {
 
     #[test]
     fn selection_xor_reverse_is_identity() {
-        // A cell that is *already* reversed and *also* part of the
-        // selection should render with the original fg/bg, because the
-        // two swaps cancel — same behaviour as iTerm / kitty.
         let red = RGBA::new(1.0, 0.0, 0.0, 1.0);
         let white = RGBA::new(1.0, 1.0, 1.0, 1.0);
         let mut cell = plain_cell('A', white, red);
@@ -292,6 +299,7 @@ mod tests {
             focused: false,
             selection: None,
             bell_active: false,
+            theme: None,
         };
 
         let area = Rect::new(0, 0, 10, 3);
@@ -337,6 +345,7 @@ mod tests {
             focused: false,
             selection: None,
             bell_active: false,
+            theme: None,
         };
 
         let area = Rect::new(0, 0, 5, 3);
@@ -366,6 +375,7 @@ mod tests {
             focused: false,
             selection: None,
             bell_active: false,
+            theme: None,
         };
 
         let area = Rect::new(0, 0, 5, 3);
@@ -396,6 +406,7 @@ mod tests {
                 head: GridPoint { row: 0, col: 1 },
             }),
             bell_active: false,
+            theme: None,
         };
 
         let area = Rect::new(0, 0, 10, 3);

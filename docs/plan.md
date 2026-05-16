@@ -742,11 +742,11 @@ The `frost-core` crate enables this — the CLI is just another consumer.
 
 ### Phase 5 — Polish
 
-- [ ] Theme → ratatui Color conversion for all widgets
-- [ ] Theme background sync (set terminal background color)
-- [ ] Clean shutdown (stop all processes, save state, restore terminal)
-- [ ] Integration testing with real `frost.toml` configs
-- [ ] Archive `ts/` directory (remove from default branch)
+- [x] Theme → ratatui Color conversion for all widgets
+- [x] Theme background sync (set terminal background color)
+- [x] Clean shutdown (stop all processes, save state, restore terminal)
+- [x] Integration testing with real `frost.toml` configs
+- [x] Archive `ts/` directory (remove from default branch)
 
 ---
 

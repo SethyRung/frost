@@ -1,37 +1,39 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Widget},
 };
 
+use frost_core::ResolvedTheme;
 use crate::state::Focus;
+use crate::theme_adapter::to_color;
 
 /// Render the command bar with shortcuts and running count.
-pub struct CommandBar {
+pub struct CommandBar<'a> {
     pub running_count: usize,
     pub focus: Focus,
+    pub theme: Option<&'a ResolvedTheme>,
 }
 
-impl Widget for CommandBar {
+impl<'a> Widget for CommandBar<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let border_color = self.theme.map(|t| to_color(t.border)).unwrap_or(ratatui::style::Color::Yellow);
         let block = Block::default()
             .title(" Command Bar ")
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Yellow));
+            .border_style(Style::default().fg(border_color));
         let inner = block.inner(area);
         block.render(area, buf);
 
-        let key_style = Style::default()
-            .fg(Color::Yellow)
-            .add_modifier(ratatui::style::Modifier::BOLD);
-        let label_style = Style::default().fg(Color::Gray);
+        let key_color = self.theme.map(|t| to_color(t.accent)).unwrap_or(ratatui::style::Color::Yellow);
+        let desc_color = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::Gray);
+        let success_color = self.theme.map(|t| to_color(t.success)).unwrap_or(ratatui::style::Color::Green);
 
-        // The shortcut hints change with focus: when the log viewer is
-        // active, Ctrl+C is forwarded to the child as SIGINT, so the
-        // quit binding shifts to Ctrl+Q and a "→PTY" hint is shown so
-        // the user knows where their keystrokes are going.
+        let key_style = Style::default().fg(key_color).add_modifier(Modifier::BOLD);
+        let label_style = Style::default().fg(desc_color);
+
         let shortcuts = match self.focus {
             Focus::Sidebar => vec![
                 Span::styled("q", key_style),
@@ -58,12 +60,10 @@ impl Widget for CommandBar {
         };
 
         let count_spans = vec![
-            Span::styled("Running: ", Style::default().fg(Color::Gray)),
+            Span::styled("Running: ", Style::default().fg(desc_color)),
             Span::styled(
                 self.running_count.to_string(),
-                Style::default()
-                    .fg(Color::Green)
-                    .add_modifier(ratatui::style::Modifier::BOLD),
+                Style::default().fg(success_color).add_modifier(Modifier::BOLD),
             ),
         ];
 
