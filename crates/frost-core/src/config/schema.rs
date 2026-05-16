@@ -9,6 +9,12 @@ pub struct FrostConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectConfig {
     pub workdir: Option<String>,
+    /// Optional glyph rendered next to the project name in the sidebar.
+    /// Pick a single nerd-font codepoint (e.g. `""` for a folder,
+    /// `""` for a phone) or any short unicode string. TUIs cannot
+    /// render raster/SVG; this is the per-project icon hook.
+    #[serde(default)]
+    pub icon: Option<String>,
     pub apps: HashMap<String, AppConfig>,
 }
 
@@ -21,6 +27,11 @@ pub struct AppConfig {
     pub command: Option<String>,
     #[serde(default)]
     pub commands: Option<HashMap<String, SubCommand>>,
+    /// Per-app icon glyph rendered next to the app name in the sidebar.
+    /// Same shape as [`ProjectConfig::icon`]; renderer prefers the app
+    /// icon when set, otherwise leaves the row plain.
+    #[serde(default)]
+    pub icon: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -195,6 +195,36 @@ impl<'a> Widget for Sidebar<'a> {
                 _ => (String::new(), None),
             };
 
+            // Per-row glyph configured via `icon = "…"` in frost.toml.
+            // Project rows look up `[projects.X].icon`; app rows look up
+            // `[projects.X.apps.Y].icon`. Terminal/Subcommand rows
+            // inherit no icon by default so the status circle stays the
+            // visual anchor for the running state.
+            let icon = match item.kind {
+                TreeItemKind::Project => self
+                    .config
+                    .projects
+                    .get(&item.path)
+                    .and_then(|p| p.icon.clone())
+                    .map(|g| format!("{} ", g))
+                    .unwrap_or_default(),
+                TreeItemKind::App => {
+                    let parts: Vec<_> = item.path.split('/').collect();
+                    if parts.len() == 2 {
+                        self.config
+                            .projects
+                            .get(parts[0])
+                            .and_then(|p| p.apps.get(parts[1]))
+                            .and_then(|a| a.icon.clone())
+                            .map(|g| format!("{} ", g))
+                            .unwrap_or_default()
+                    } else {
+                        String::new()
+                    }
+                }
+                _ => String::new(),
+            };
+
             // Append `— <title>` when the child has set one via OSC 0/2,
             // truncated so it can't push the indicator off-screen.
             let title_suffix = title
@@ -212,8 +242,8 @@ impl<'a> Widget for Sidebar<'a> {
                 .unwrap_or_default();
 
             let text = format!(
-                "{}{}{}{}{}",
-                indent, prefix, status, item.name, title_suffix
+                "{}{}{}{}{}{}",
+                indent, prefix, icon, status, item.name, title_suffix
             );
             let span = Span::styled(text, style);
             let line = Line::from(span);

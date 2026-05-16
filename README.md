@@ -28,10 +28,15 @@ Create a `frost.toml` in your project root:
 ```toml
 [projects.portfolio]
 workdir = "../portfolio"
+# Optional glyph rendered next to the project name in the sidebar.
+# Use any single nerd-font codepoint or short unicode string. TUIs
+# cannot render raster/SVG; this is the per-project icon hook.
+icon = ""
 
 [projects.portfolio.apps.frontend]
 workdir = "./frontend"
 default = "dev"
+icon = ""
 
 [projects.portfolio.apps.frontend.commands.dev]
 command = "pnpm dev"
