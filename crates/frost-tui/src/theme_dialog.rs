@@ -6,8 +6,8 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Widget},
 };
 
-use frost_core::ResolvedTheme;
 use crate::theme_adapter::to_color;
+use frost_core::ResolvedTheme;
 
 /// Render the theme switcher dialog.
 pub struct ThemeDialog<'a> {
@@ -62,7 +62,10 @@ impl<'a> Widget for ThemeDialog<'a> {
         let overlay_area = center_rect(area, 40, 16);
         Clear.render(overlay_area, buf);
 
-        let border_color = self.theme.map(|t| to_color(t.primary)).unwrap_or(ratatui::style::Color::Blue);
+        let border_color = self
+            .theme
+            .map(|t| to_color(t.primary))
+            .unwrap_or(ratatui::style::Color::Blue);
         let block = Block::default()
             .title(" Switch Theme ")
             .borders(Borders::ALL)
@@ -70,12 +73,27 @@ impl<'a> Widget for ThemeDialog<'a> {
         let inner = block.inner(overlay_area);
         block.render(overlay_area, buf);
 
-        let placeholder_color = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::DarkGray);
-        let text_color = self.theme.map(|t| to_color(t.text)).unwrap_or(ratatui::style::Color::White);
-        let divider_color = self.theme.map(|t| to_color(t.border)).unwrap_or(ratatui::style::Color::DarkGray);
+        let placeholder_color = self
+            .theme
+            .map(|t| to_color(t.text_muted))
+            .unwrap_or(ratatui::style::Color::DarkGray);
+        let text_color = self
+            .theme
+            .map(|t| to_color(t.text))
+            .unwrap_or(ratatui::style::Color::White);
+        let divider_color = self
+            .theme
+            .map(|t| to_color(t.border))
+            .unwrap_or(ratatui::style::Color::DarkGray);
         let selected_bg = self.theme.map(|t| to_color(t.background_panel));
-        let success_color = self.theme.map(|t| to_color(t.success)).unwrap_or(ratatui::style::Color::Green);
-        let muted_color = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::Gray);
+        let success_color = self
+            .theme
+            .map(|t| to_color(t.success))
+            .unwrap_or(ratatui::style::Color::Green);
+        let muted_color = self
+            .theme
+            .map(|t| to_color(t.text_muted))
+            .unwrap_or(ratatui::style::Color::Gray);
 
         // Filter input.
         let filter_text = if self.filter.is_empty() {

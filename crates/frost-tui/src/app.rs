@@ -9,8 +9,8 @@ use ratatui::{
 
 use crossterm::event::{KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use frost_core::{
-    FrostConfig, ProcessManager, ProcessStatus, RuntimeCommand, ThemeRegistry,
-    ThemeStore, flatten_config, ResolvedTheme,
+    FrostConfig, ProcessManager, ProcessStatus, ResolvedTheme, RuntimeCommand, ThemeRegistry,
+    ThemeStore, flatten_config,
 };
 
 use crate::{
@@ -28,7 +28,7 @@ use crate::{
 
 /// Visual constants used by the layout. Kept in one place so the PTY
 /// resize calculation and the renderer can never drift apart.
-const SIDEBAR_WIDTH: u16 = 30;
+const SIDEBAR_WIDTH: u16 = 36;
 const COMMAND_BAR_HEIGHT: u16 = 3;
 const PANE_BORDER: u16 = 2;
 const MIN_PTY_COLS: u16 = 20;
@@ -182,8 +182,8 @@ impl App {
         let theme_persist = dirs::home_dir()
             .map(|h| h.join(".frost/theme.json"))
             .unwrap_or_else(|| PathBuf::from(".frost/theme.json"));
-        let mut theme_store = ThemeStore::new(ThemeRegistry::with_builtin_themes())
-            .with_persist_path(&theme_persist);
+        let mut theme_store =
+            ThemeStore::new(ThemeRegistry::with_builtin_themes()).with_persist_path(&theme_persist);
         theme_store.load_persisted();
 
         // Set up state store.
@@ -427,13 +427,9 @@ impl App {
                     self.state.selection = None;
                 }
                 self.state.selected_process = Some(new);
-                // Navigating onto a subcommand row that has never been
-                // run leaves it stopped, which is confusing: the user
-                // sees an empty log pane and typing does nothing. Spawn
-                // a real interactive shell so the row immediately acts
-                // like a terminal. Pressing Enter on the row will swap
-                // the shell out for the configured command.
-                self.ensure_shell_for_selected();
+                if item.kind == TreeItemKind::Terminal {
+                    self.ensure_shell_for_selected();
+                }
             }
         }
     }
@@ -467,9 +463,7 @@ impl App {
         let workdir = self
             .flattened
             .iter()
-            .find(|c| {
-                c.project_name == proj && c.app_name == app && c.subcommand_name == sub
-            })
+            .find(|c| c.project_name == proj && c.app_name == app && c.subcommand_name == sub)
             .or_else(|| {
                 self.flattened
                     .iter()
@@ -481,7 +475,12 @@ impl App {
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
         let (cols, rows) = self.current_pty_dims();
         let mut pm = self.process_manager.lock().unwrap();
-        let _ = pm.start(&proj, &app, &sub, &shell, &workdir, cols, rows);
+        if let Err(e) = pm.start(&proj, &app, &sub, &shell, &workdir, cols, rows) {
+            eprintln!(
+                "[frost] failed to start shell for {}/{}/{}: {}",
+                proj, app, sub, e
+            );
+        }
     }
 
     fn toggle_selected(&mut self) {
@@ -512,21 +511,38 @@ impl App {
                         .unwrap_or(ProcessStatus::Stopped)
                 };
 
-                if status == ProcessStatus::Stopped || status == ProcessStatus::Crashed {
-                    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-                    let workdir = self
-                        .flattened
-                        .iter()
-                        .find(|c| c.project_name == project && c.app_name == app)
-                        .map(|c| c.workdir.clone())
-                        .unwrap_or_else(|| std::path::PathBuf::from("."));
-                    let (cols, rows) = self.current_pty_dims();
-                    {
-                        let mut pm = self.process_manager.lock().unwrap();
-                        let _ = pm.start(project, app, subcommand, &shell, &workdir, cols, rows);
+                let mut pm = self.process_manager.lock().unwrap();
+                match status {
+                    ProcessStatus::Stopped | ProcessStatus::Crashed | ProcessStatus::Stopping => {
+                        let shell =
+                            std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
+                        let workdir = self
+                            .flattened
+                            .iter()
+                            .find(|c| c.project_name == project && c.app_name == app)
+                            .map(|c| c.workdir.clone())
+                            .unwrap_or_else(|| std::path::PathBuf::from("."));
+                        let (cols, rows) = self.current_pty_dims();
+                        if let Err(e) =
+                            pm.start(project, app, subcommand, &shell, &workdir, cols, rows)
+                        {
+                            eprintln!(
+                                "[frost] failed to start terminal for {}/{}: {}",
+                                project, app, e
+                            );
+                        }
                     }
-                    self.update_selected_process();
+                    ProcessStatus::Running | ProcessStatus::Starting => {
+                        if let Err(e) = pm.stop(project, app, subcommand) {
+                            eprintln!(
+                                "[frost] failed to stop terminal for {}/{}: {}",
+                                project, app, e
+                            );
+                        }
+                    }
                 }
+                drop(pm);
+                self.update_selected_process();
             }
             TreeItemKind::Subcommand => {
                 let parts: Vec<_> = item.path.split('/').collect();
@@ -534,24 +550,32 @@ impl App {
                     return;
                 }
                 let (project, app, subcommand) = (parts[0], parts[1], parts[2]);
-                self.run_command_in_shell(project, app, subcommand);
+
+                let status = {
+                    let pm = self.process_manager.lock().unwrap();
+                    pm.get_info(project, app, subcommand)
+                        .map(|info| info.status)
+                        .unwrap_or(ProcessStatus::Stopped)
+                };
+
+                match status {
+                    ProcessStatus::Stopped | ProcessStatus::Crashed | ProcessStatus::Stopping => {
+                        self.run_command_in_shell(project, app, subcommand);
+                    }
+                    ProcessStatus::Running | ProcessStatus::Starting => {
+                        let mut pm = self.process_manager.lock().unwrap();
+                        if let Err(e) = pm.stop(project, app, subcommand) {
+                            eprintln!(
+                                "[frost] failed to stop subcommand {}/{}/{}: {}",
+                                project, app, subcommand, e
+                            );
+                        }
+                    }
+                }
             }
         }
     }
 
-    /// Pressing Enter on a subcommand row runs its configured command
-    /// *inside* the auto-spawned interactive shell for that row, the
-    /// same way a human would by typing the command at the prompt. The
-    /// command therefore inherits the shell's PTY, its job-control
-    /// signals, and crucially the user's ability to interact with it
-    /// (Ctrl+C to stop, arrow keys for in-process navigation, etc.).
-    ///
-    /// First we make sure the row's shell is alive; then we write
-    /// `<command>\n` to its stdin. Re-pressing Enter just runs the
-    /// command again — there is no separate "stop" state because the
-    /// running command is already cancellable with Ctrl+C from the log
-    /// viewer (which forwards `0x03` to the controlling tty thanks to
-    /// PR4's input rework).
     fn run_command_in_shell(&mut self, project: &str, app: &str, subcommand: &str) {
         let rt_cmd = self
             .flattened
@@ -564,15 +588,47 @@ impl App {
             return;
         };
 
-        // Guarantee the shell PTY exists before injecting anything.
-        self.ensure_shell_for_selected();
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
+        let (cols, rows) = self.current_pty_dims();
+        let mut pm = self.process_manager.lock().unwrap();
+
+        let already_running = pm
+            .get_info(project, app, subcommand)
+            .map(|info| {
+                matches!(
+                    info.status,
+                    ProcessStatus::Running | ProcessStatus::Starting
+                )
+            })
+            .unwrap_or(false);
+        if !already_running {
+            if let Err(e) = pm.start(
+                project,
+                app,
+                subcommand,
+                &shell,
+                &rt_cmd.workdir,
+                cols,
+                rows,
+            ) {
+                eprintln!(
+                    "[frost] failed to start shell for {}/{}/{}: {}",
+                    project, app, subcommand, e
+                );
+                return;
+            }
+        }
 
         let mut line = rt_cmd.command;
         if !line.ends_with('\n') {
             line.push('\n');
         }
-        let mut pm = self.process_manager.lock().unwrap();
-        let _ = pm.write_stdin(project, app, subcommand, line.as_bytes());
+        if let Err(e) = pm.write_stdin(project, app, subcommand, line.as_bytes()) {
+            eprintln!(
+                "[frost] failed to write command to {}/{}/{}: {}",
+                project, app, subcommand, e
+            );
+        }
     }
 
     /// Resolve the current `(cols, rows)` the log pane should render. Uses
@@ -838,7 +894,7 @@ impl App {
             seen.insert(key);
             {
                 let mut pm = self.process_manager.lock().unwrap();
-                let _ = pm.start(
+                if let Err(e) = pm.start(
                     &rt_cmd.project_name,
                     &rt_cmd.app_name,
                     "terminal",
@@ -846,7 +902,12 @@ impl App {
                     &rt_cmd.workdir,
                     cols,
                     rows,
-                );
+                ) {
+                    eprintln!(
+                        "[frost] failed to start terminal for {}/{}: {}",
+                        rt_cmd.project_name, rt_cmd.app_name, e
+                    );
+                }
             }
         }
     }
@@ -906,7 +967,7 @@ impl App {
         // Horizontal split: sidebar (left) + log viewer (right).
         let horiz = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Length(30), Constraint::Min(1)])
+            .constraints([Constraint::Length(SIDEBAR_WIDTH), Constraint::Min(1)])
             .split(vert[0]);
 
         let sidebar_focused = self.state.focus == Focus::Sidebar;
@@ -1045,10 +1106,10 @@ mod tests {
 
     #[test]
     fn log_pane_dims_typical_terminal() {
-        // 120x30 terminal → sidebar 30, command bar 3, 2-cell border on log pane:
-        // cols = 120 - 30 - 2 = 88 ; rows = 30 - 3 - 2 = 25.
+        // 120x30 terminal → sidebar 36, command bar 3, 2-cell border on log pane:
+        // cols = 120 - 36 - 2 = 82 ; rows = 30 - 3 - 2 = 25.
         let (cols, rows) = log_pane_dims(120, 30);
-        assert_eq!(cols, 88);
+        assert_eq!(cols, 82);
         assert_eq!(rows, 25);
     }
 
@@ -1064,7 +1125,7 @@ mod tests {
     fn log_pane_dims_large_terminal() {
         // Standard 1080p-ish terminal.
         let (cols, rows) = log_pane_dims(220, 60);
-        assert_eq!(cols, 220 - 30 - 2);
+        assert_eq!(cols, 220 - SIDEBAR_WIDTH - 2);
         assert_eq!(rows, 60 - 3 - 2);
     }
 
@@ -1105,17 +1166,25 @@ mod tests {
 
     #[test]
     fn encode_sgr_mouse_left_press_no_mods() {
-        let bytes =
-            encode_sgr_mouse(MouseEventKind::Down(MouseButton::Left), KeyModifiers::NONE, 1, 1)
-                .unwrap();
+        let bytes = encode_sgr_mouse(
+            MouseEventKind::Down(MouseButton::Left),
+            KeyModifiers::NONE,
+            1,
+            1,
+        )
+        .unwrap();
         assert_eq!(bytes, b"\x1B[<0;1;1M");
     }
 
     #[test]
     fn encode_sgr_mouse_left_release_is_lowercase_m() {
-        let bytes =
-            encode_sgr_mouse(MouseEventKind::Up(MouseButton::Left), KeyModifiers::NONE, 5, 3)
-                .unwrap();
+        let bytes = encode_sgr_mouse(
+            MouseEventKind::Up(MouseButton::Left),
+            KeyModifiers::NONE,
+            5,
+            3,
+        )
+        .unwrap();
         assert_eq!(bytes, b"\x1B[<0;5;3m");
     }
 
@@ -1135,16 +1204,19 @@ mod tests {
     #[test]
     fn encode_sgr_mouse_drag_adds_32() {
         // Left drag = 0 + 32 = 32.
-        let bytes =
-            encode_sgr_mouse(MouseEventKind::Drag(MouseButton::Left), KeyModifiers::NONE, 4, 2)
-                .unwrap();
+        let bytes = encode_sgr_mouse(
+            MouseEventKind::Drag(MouseButton::Left),
+            KeyModifiers::NONE,
+            4,
+            2,
+        )
+        .unwrap();
         assert_eq!(bytes, b"\x1B[<32;4;2M");
     }
 
     #[test]
     fn encode_sgr_mouse_wheel_up_is_64() {
-        let bytes =
-            encode_sgr_mouse(MouseEventKind::ScrollUp, KeyModifiers::NONE, 12, 8).unwrap();
+        let bytes = encode_sgr_mouse(MouseEventKind::ScrollUp, KeyModifiers::NONE, 12, 8).unwrap();
         assert_eq!(bytes, b"\x1B[<64;12;8M");
     }
 

@@ -35,7 +35,7 @@ impl Dimensions for TermDimensions {
 /// Per-process state kept by the manager.
 struct ProcessState {
     pid: u32,
-    status: ProcessStatus,
+    status: Arc<Mutex<ProcessStatus>>,
     pty: PtyProcess,
     terminal: Arc<Mutex<Term<FrostListener>>>,
     parser: Arc<Mutex<alacritty_terminal::vte::ansi::Processor>>,
@@ -96,9 +96,11 @@ impl ProcessManager {
         let terminal = build_terminal_with_listener(cols, rows, listener);
         let parser = alacritty_terminal::vte::ansi::Processor::new();
 
+        let status = Arc::new(Mutex::new(ProcessStatus::Starting));
+
         let state = ProcessState {
             pid: pty.pid,
-            status: ProcessStatus::Starting,
+            status: Arc::clone(&status),
             pty,
             terminal: Arc::new(Mutex::new(terminal)),
             parser: Arc::new(Mutex::new(parser)),
@@ -133,6 +135,7 @@ impl ProcessManager {
                 reader,
                 term,
                 parser,
+                status,
                 generation_id,
                 project_owned,
                 app_owned,
@@ -159,7 +162,7 @@ impl ProcessManager {
             ProcessError::NotFound(project.to_string(), app.to_string(), subcommand.to_string())
         })?;
 
-        state.status = ProcessStatus::Stopping;
+        *state.status.lock().unwrap() = ProcessStatus::Stopping;
         state.pty.kill_process_group()?;
 
         // 5-second grace period → SIGKILL.
@@ -229,7 +232,7 @@ impl ProcessManager {
             project: s.project.clone(),
             app: s.app.clone(),
             subcommand: s.subcommand.clone(),
-            status: s.status,
+            status: *s.status.lock().unwrap(),
             pid: Some(s.pid),
             generation_id: s.generation_id,
         })
@@ -377,7 +380,7 @@ impl ProcessManager {
                 project: s.project.clone(),
                 app: s.app.clone(),
                 subcommand: s.subcommand.clone(),
-                status: s.status,
+                status: *s.status.lock().unwrap(),
                 pid: Some(s.pid),
                 generation_id: s.generation_id,
             })
@@ -413,6 +416,7 @@ async fn read_task(
     mut reader: Box<dyn std::io::Read + Send>,
     terminal: Arc<Mutex<Term<FrostListener>>>,
     parser: Arc<Mutex<alacritty_terminal::vte::ansi::Processor>>,
+    status: Arc<Mutex<ProcessStatus>>,
     generation_id: u64,
     project: String,
     app: String,
@@ -421,10 +425,12 @@ async fn read_task(
     state_tx: broadcast::Sender<StateEvent>,
 ) {
     let mut buf = [0u8; 4096];
+    let mut first_output = true;
     loop {
         match reader.read(&mut buf) {
             Ok(0) => {
                 // EOF — process exited.
+                *status.lock().unwrap() = ProcessStatus::Stopped;
                 let _ = state_tx.send(StateEvent::Stopped {
                     project: project.clone(),
                     app: app.clone(),
@@ -433,6 +439,13 @@ async fn read_task(
                 break;
             }
             Ok(n) => {
+                if first_output {
+                    first_output = false;
+                    let mut s = status.lock().unwrap();
+                    if *s == ProcessStatus::Starting {
+                        *s = ProcessStatus::Running;
+                    }
+                }
                 let mut term = terminal.lock().unwrap();
                 let mut parser = parser.lock().unwrap();
                 parser.advance(&mut *term, &buf[..n]);
@@ -444,6 +457,7 @@ async fn read_task(
                 });
             }
             Err(_) => {
+                *status.lock().unwrap() = ProcessStatus::Stopped;
                 let _ = state_tx.send(StateEvent::Stopped {
                     project: project.clone(),
                     app: app.clone(),
@@ -705,11 +719,12 @@ mod tests {
             text
         );
 
-        // Verify process info.
+        // Verify process info.  `echo` exits immediately so by the time we
+        // check the status has already transitioned to Stopped.
         let info = mgr
             .get_info("test-project", "test-app", "default")
             .expect("should have process info");
-        assert_eq!(info.status, ProcessStatus::Starting);
+        assert_eq!(info.status, ProcessStatus::Stopped);
         assert_eq!(info.generation_id, generation_id);
 
         mgr.remove("test-project", "test-app", "default");
@@ -867,10 +882,7 @@ mod tests {
         );
 
         // The very first line emitted must be reachable via scrollback.
-        let all_text: String = all
-            .iter()
-            .flat_map(|row| row.iter().map(|c| c.c))
-            .collect();
+        let all_text: String = all.iter().flat_map(|row| row.iter().map(|c| c.c)).collect();
         assert!(
             all_text.contains("LINE00"),
             "scrollback missing first line: {:?}",
@@ -978,9 +990,7 @@ mod tests {
 
         // Emulator grid is also resized so the renderer paints 30 rows of
         // 100 cells.
-        let lines = mgr
-            .get_display_lines("p", "a", "s")
-            .expect("display lines");
+        let lines = mgr.get_display_lines("p", "a", "s").expect("display lines");
         assert_eq!(lines.len(), 30, "term grid screen_lines == new rows");
         assert_eq!(
             lines.first().map(|r| r.len()).unwrap_or(0),

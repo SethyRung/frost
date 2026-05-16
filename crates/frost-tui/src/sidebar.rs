@@ -144,7 +144,10 @@ impl<'a> Widget for Sidebar<'a> {
 
         let items = build_visible_tree(self.config, self.expanded);
         if items.is_empty() {
-            let msg_color = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::DarkGray);
+            let msg_color = self
+                .theme
+                .map(|t| to_color(t.text_muted))
+                .unwrap_or(ratatui::style::Color::DarkGray);
             let msg = Span::styled("No projects configured", Style::default().fg(msg_color));
             buf.set_line(inner.x, inner.y, &Line::from(msg), inner.width);
             return;
@@ -159,6 +162,14 @@ impl<'a> Widget for Sidebar<'a> {
             0
         };
 
+        let accent = self.theme.map(|t| to_color(t.accent));
+        let text = self.theme.map(|t| to_color(t.text));
+        let text_muted = self.theme.map(|t| to_color(t.text_muted));
+        let success = self.theme.map(|t| to_color(t.success));
+        let warning = self.theme.map(|t| to_color(t.warning));
+        let error = self.theme.map(|t| to_color(t.error));
+        let bg_panel = self.theme.map(|t| to_color(t.background_panel));
+
         for (i, item) in items.iter().skip(start).take(visible_height).enumerate() {
             let row = inner.y + i as u16;
             if row >= inner.y + inner.height {
@@ -166,10 +177,9 @@ impl<'a> Widget for Sidebar<'a> {
             }
 
             let is_selected = start + i == selected_index;
-            let style = if is_selected {
-                let bg = self.theme.map(|t| to_color(t.background_panel));
-                let mut s = Style::default().add_modifier(Modifier::BOLD);
-                if let Some(c) = bg {
+            let base_style = if is_selected {
+                let mut s = Style::default();
+                if let Some(c) = bg_panel {
                     s = s.bg(c);
                 } else {
                     s = s.bg(ratatui::style::Color::DarkGray);
@@ -179,86 +189,108 @@ impl<'a> Widget for Sidebar<'a> {
                 Style::default()
             };
 
-            let indent = "  ".repeat(item.depth);
-            let prefix = match item.kind {
-                TreeItemKind::Project | TreeItemKind::App => {
-                    if self.expanded.contains(&item.path) {
-                        "▼ "
-                    } else {
-                        "▶ "
-                    }
-                }
-                TreeItemKind::Terminal | TreeItemKind::Subcommand => "  ",
-            };
+            let mut spans: Vec<Span> = Vec::new();
 
-            let (status, title) = match item.kind {
+            if is_selected {
+                spans.push(Span::styled(
+                    "› ",
+                    base_style
+                        .fg(accent.unwrap_or(ratatui::style::Color::Cyan))
+                        .add_modifier(Modifier::BOLD),
+                ));
+            } else {
+                spans.push(Span::styled("  ", base_style));
+            }
+
+            spans.push(Span::styled("  ".repeat(item.depth), base_style));
+
+            match item.kind {
+                TreeItemKind::Project | TreeItemKind::App => {
+                    let chevron = if self.expanded.contains(&item.path) {
+                        "▾ "
+                    } else {
+                        "▸ "
+                    };
+                    spans.push(Span::styled(
+                        chevron,
+                        base_style.fg(text_muted.unwrap_or(ratatui::style::Color::DarkGray)),
+                    ));
+
+                    let icon = match item.kind {
+                        TreeItemKind::Project => self
+                            .config
+                            .projects
+                            .get(&item.path)
+                            .and_then(|p| p.icon.clone())
+                            .unwrap_or_default(),
+                        TreeItemKind::App => {
+                            let parts: Vec<_> = item.path.split('/').collect();
+                            if parts.len() == 2 {
+                                self.config
+                                    .projects
+                                    .get(parts[0])
+                                    .and_then(|p| p.apps.get(parts[1]))
+                                    .and_then(|a| a.icon.clone())
+                                    .unwrap_or_default()
+                            } else {
+                                String::new()
+                            }
+                        }
+                        _ => unreachable!(),
+                    };
+                    if !icon.is_empty() {
+                        spans.push(Span::styled(
+                            format!("{} ", icon),
+                            base_style.fg(text.unwrap_or(ratatui::style::Color::White)),
+                        ));
+                    }
+
+                    let name_fg = if item.kind == TreeItemKind::Project {
+                        accent.unwrap_or(ratatui::style::Color::Cyan)
+                    } else {
+                        text.unwrap_or(ratatui::style::Color::White)
+                    };
+                    spans.push(Span::styled(
+                        item.name.clone(),
+                        base_style.fg(name_fg).add_modifier(Modifier::BOLD),
+                    ));
+                }
                 TreeItemKind::Terminal | TreeItemKind::Subcommand => {
                     let parts: Vec<_> = item.path.split('/').collect();
                     if parts.len() == 3 {
                         let status = get_status(self.process_manager, parts[0], parts[1], parts[2]);
-                        let title = self
-                            .process_manager
-                            .get_title(parts[0], parts[1], parts[2]);
-                        (format!("{} ", AppState::status_icon(status)), title)
-                    } else {
-                        (String::new(), None)
+                        let status_fg = match status {
+                            ProcessStatus::Running => {
+                                success.unwrap_or(ratatui::style::Color::Green)
+                            }
+                            ProcessStatus::Starting => {
+                                accent.unwrap_or(ratatui::style::Color::Yellow)
+                            }
+                            ProcessStatus::Stopping => {
+                                warning.unwrap_or(ratatui::style::Color::Yellow)
+                            }
+                            ProcessStatus::Crashed => error.unwrap_or(ratatui::style::Color::Red),
+                            ProcessStatus::Stopped => {
+                                text_muted.unwrap_or(ratatui::style::Color::DarkGray)
+                            }
+                        };
+                        spans.push(Span::styled(
+                            AppState::status_icon(status),
+                            base_style.fg(status_fg),
+                        ));
+                        spans.push(Span::styled(" ", base_style));
                     }
-                }
-                _ => (String::new(), None),
-            };
 
-            // Per-row glyph configured via `icon = "…"` in frost.toml.
-            // Project rows look up `[projects.X].icon`; app rows look up
-            // `[projects.X.apps.Y].icon`. Terminal/Subcommand rows
-            // inherit no icon by default so the status circle stays the
-            // visual anchor for the running state.
-            let icon = match item.kind {
-                TreeItemKind::Project => self
-                    .config
-                    .projects
-                    .get(&item.path)
-                    .and_then(|p| p.icon.clone())
-                    .map(|g| format!("{} ", g))
-                    .unwrap_or_default(),
-                TreeItemKind::App => {
-                    let parts: Vec<_> = item.path.split('/').collect();
-                    if parts.len() == 2 {
-                        self.config
-                            .projects
-                            .get(parts[0])
-                            .and_then(|p| p.apps.get(parts[1]))
-                            .and_then(|a| a.icon.clone())
-                            .map(|g| format!("{} ", g))
-                            .unwrap_or_default()
+                    let name_fg = if item.kind == TreeItemKind::Terminal {
+                        text_muted.unwrap_or(ratatui::style::Color::DarkGray)
                     } else {
-                        String::new()
-                    }
-                }
-                _ => String::new(),
-            };
-
-            // Append `— <title>` when the child has set one via OSC 0/2,
-            // truncated so it can't push the indicator off-screen.
-            let title_suffix = title
-                .as_deref()
-                .filter(|t| !t.is_empty())
-                .map(|t| {
-                    let max = 24usize;
-                    let trimmed: String = if t.chars().count() > max {
-                        t.chars().take(max).collect::<String>() + "…"
-                    } else {
-                        t.to_string()
+                        text.unwrap_or(ratatui::style::Color::White)
                     };
-                    format!(" — {}", trimmed)
-                })
-                .unwrap_or_default();
+                    spans.push(Span::styled(item.name.clone(), base_style.fg(name_fg)));
+                }
+            }
 
-            let text = format!(
-                "{}{}{}{}{}{}",
-                indent, prefix, icon, status, item.name, title_suffix
-            );
-            let span = Span::styled(text, style);
-            let line = Line::from(span);
+            let line = Line::from(spans);
             buf.set_line(inner.x, row, &line, inner.width);
         }
     }

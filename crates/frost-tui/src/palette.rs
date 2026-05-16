@@ -6,8 +6,8 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Paragraph, Widget},
 };
 
-use frost_core::ResolvedTheme;
 use crate::theme_adapter::to_color;
+use frost_core::ResolvedTheme;
 
 /// A palette command entry.
 #[derive(Debug, Clone)]
@@ -92,7 +92,10 @@ impl<'a> Widget for Palette<'a> {
         let overlay_area = center_rect(area, 50, 12);
         Clear.render(overlay_area, buf);
 
-        let border_color = self.theme.map(|t| to_color(t.accent)).unwrap_or(ratatui::style::Color::Magenta);
+        let border_color = self
+            .theme
+            .map(|t| to_color(t.accent))
+            .unwrap_or(ratatui::style::Color::Magenta);
         let block = Block::default()
             .title(" Command Palette ")
             .borders(Borders::ALL)
@@ -106,8 +109,14 @@ impl<'a> Widget for Palette<'a> {
         } else {
             &self.filter
         };
-        let placeholder_color = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::DarkGray);
-        let text_color = self.theme.map(|t| to_color(t.text)).unwrap_or(ratatui::style::Color::White);
+        let placeholder_color = self
+            .theme
+            .map(|t| to_color(t.text_muted))
+            .unwrap_or(ratatui::style::Color::DarkGray);
+        let text_color = self
+            .theme
+            .map(|t| to_color(t.text))
+            .unwrap_or(ratatui::style::Color::White);
         let filter_style = if self.filter.is_empty() {
             Style::default().fg(placeholder_color)
         } else {
@@ -117,7 +126,10 @@ impl<'a> Widget for Palette<'a> {
         filter_para.render(Rect::new(inner.x, inner.y, inner.width, 1), buf);
 
         // Divider.
-        let divider_color = self.theme.map(|t| to_color(t.border)).unwrap_or(ratatui::style::Color::DarkGray);
+        let divider_color = self
+            .theme
+            .map(|t| to_color(t.border))
+            .unwrap_or(ratatui::style::Color::DarkGray);
         let divider = "─".repeat(inner.width as usize);
         buf.set_line(
             inner.x,
@@ -136,14 +148,22 @@ impl<'a> Widget for Palette<'a> {
         );
 
         let selected_bg = self.theme.map(|t| to_color(t.background_panel));
-        let selected_fg = self.theme.map(|t| to_color(t.text)).unwrap_or(ratatui::style::Color::White);
-        let unselected_fg = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::Gray);
+        let selected_fg = self
+            .theme
+            .map(|t| to_color(t.text))
+            .unwrap_or(ratatui::style::Color::White);
+        let unselected_fg = self
+            .theme
+            .map(|t| to_color(t.text_muted))
+            .unwrap_or(ratatui::style::Color::Gray);
 
         for (i, item) in filtered.iter().enumerate().take(list_area.height as usize) {
             let row = list_area.y + i as u16;
             let is_selected = i == self.selected;
             let style = if is_selected {
-                let mut s = Style::default().fg(selected_fg).add_modifier(Modifier::BOLD);
+                let mut s = Style::default()
+                    .fg(selected_fg)
+                    .add_modifier(Modifier::BOLD);
                 if let Some(c) = selected_bg {
                     s = s.bg(c);
                 } else {

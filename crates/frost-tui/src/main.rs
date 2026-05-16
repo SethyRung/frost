@@ -40,9 +40,10 @@ async fn main() -> Result<()> {
     // Set up terminal.
     let mut terminal = setup_terminal()?;
 
-    // Create the process manager and subscribe to screen updates.
+    // Create the process manager and subscribe to screen + state updates.
     let process_manager = ProcessManager::new();
     let mut screen_rx = process_manager.subscribe_screen();
+    let mut state_rx = process_manager.subscribe_state();
 
     // Run the app.
     let result = run_app(
@@ -51,6 +52,7 @@ async fn main() -> Result<()> {
         config,
         config_path,
         &mut screen_rx,
+        &mut state_rx,
     )
     .await;
 
@@ -113,6 +115,7 @@ async fn run_app(
     config: frost_core::FrostConfig,
     config_path: PathBuf,
     screen_rx: &mut tokio::sync::broadcast::Receiver<frost_core::ScreenUpdate>,
+    state_rx: &mut tokio::sync::broadcast::Receiver<frost_core::StateEvent>,
 ) -> Result<()> {
     // Query the actual terminal size so initial PTY dims match the visible
     // log pane, instead of defaulting to a guessed 80x24.
@@ -147,6 +150,12 @@ async fn run_app(
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                         // All senders dropped — shouldn't happen.
                     }
+                }
+            }
+            result = state_rx.recv() => {
+                match result {
+                    Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {}
                 }
             }
             _ = tick_interval.tick() => {

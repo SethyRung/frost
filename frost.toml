@@ -1,8 +1,13 @@
 [projects.portfolio]
 workdir = "../portfolio"
 
-[projects.portfolio.apps.frontend]
+
+[projects.portfolio.apps.frontend.commands.dev]
 command = "pnpm dev"
+[projects.portfolio.apps.frontend.commands.build]
+command = "pnpm build"
+[projects.portfolio.apps.frontend.commands.lint]
+command = "pnpm lint"
 
 [projects.chongkran]
 workdir = "../Chongkran"

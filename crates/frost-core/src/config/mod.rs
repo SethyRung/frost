@@ -323,9 +323,15 @@ workdir = "./frontend"
         assert!(config_path.exists(), "frost.toml should exist at repo root");
 
         let config = load_config(&config_path).expect("should parse real frost.toml");
-        assert!(!config.projects.is_empty(), "should have at least one project");
+        assert!(
+            !config.projects.is_empty(),
+            "should have at least one project"
+        );
 
         let commands = flatten_config(&config, &config_path);
-        assert!(!commands.is_empty(), "should flatten to at least one command");
+        assert!(
+            !commands.is_empty(),
+            "should flatten to at least one command"
+        );
     }
 }

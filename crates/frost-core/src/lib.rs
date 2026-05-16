@@ -3,7 +3,6 @@ pub mod process;
 pub mod state;
 pub mod theme;
 
-// Re-export commonly used items
 pub use config::{
     ConfigError, RuntimeCommand, find_config, flatten_config, load_config,
     schema::{AppConfig, FrostConfig, ProjectConfig, SubCommand},

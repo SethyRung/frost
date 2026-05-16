@@ -77,11 +77,22 @@ fn rgba_to_ratatui(rgba: RGBA) -> Color {
     )
 }
 
+fn is_default_bg(rgba: RGBA) -> bool {
+    rgba.r == 0.0 && rgba.g == 0.0 && rgba.b == 0.0 && rgba.a == 1.0
+}
+
+fn is_default_fg(rgba: RGBA) -> bool {
+    (rgba.r - 0.9).abs() < 0.01
+        && (rgba.g - 0.9).abs() < 0.01
+        && (rgba.b - 0.9).abs() < 0.01
+        && rgba.a == 1.0
+}
+
 /// Compute the rendered style for one cell. `selected` swaps fg/bg the
 /// same way the `reverse` flag does; combining both flags is a no-op
 /// (selected + reverse cancel out) which matches what most terminal
 /// emulators show.
-fn cell_style(cell: &TerminalCell, selected: bool) -> Style {
+fn cell_style(cell: &TerminalCell, selected: bool, theme: Option<&ResolvedTheme>) -> Style {
     let swap = cell.reverse ^ selected;
     let (fg_rgba, bg_rgba) = if swap {
         (cell.bg, cell.fg)
@@ -89,9 +100,22 @@ fn cell_style(cell: &TerminalCell, selected: bool) -> Style {
         (cell.fg, cell.bg)
     };
 
-    let mut style = Style::default()
-        .fg(rgba_to_ratatui(fg_rgba))
-        .bg(rgba_to_ratatui(bg_rgba));
+    let bg = if is_default_bg(bg_rgba) {
+        theme
+            .map(|t| to_color(t.background))
+            .unwrap_or(rgba_to_ratatui(bg_rgba))
+    } else {
+        rgba_to_ratatui(bg_rgba)
+    };
+    let fg = if is_default_fg(fg_rgba) {
+        theme
+            .map(|t| to_color(t.text))
+            .unwrap_or(rgba_to_ratatui(fg_rgba))
+    } else {
+        rgba_to_ratatui(fg_rgba)
+    };
+
+    let mut style = Style::default().fg(fg).bg(bg);
 
     if cell.bold {
         style = style.add_modifier(Modifier::BOLD);
@@ -154,7 +178,10 @@ impl<'a> Widget for LogViewer<'a> {
         block.render(area, buf);
 
         if self.lines.is_empty() {
-            let msg_color = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(Color::DarkGray);
+            let msg_color = self
+                .theme
+                .map(|t| to_color(t.text_muted))
+                .unwrap_or(Color::DarkGray);
             let msg = Span::styled(
                 "No process selected — use sidebar to start one",
                 Style::default().fg(msg_color),
@@ -196,7 +223,7 @@ impl<'a> Widget for LogViewer<'a> {
                         .selection
                         .map(|sel| sel.contains(grid_row, col))
                         .unwrap_or(false);
-                    Span::styled(cell_glyph(cell), cell_style(cell, selected))
+                    Span::styled(cell_glyph(cell), cell_style(cell, selected, self.theme))
                 })
                 .collect();
 
@@ -234,7 +261,7 @@ mod tests {
         let red = RGBA::new(1.0, 0.0, 0.0, 1.0);
         let white = RGBA::new(1.0, 1.0, 1.0, 1.0);
         let cell = plain_cell('A', white, red);
-        let style = cell_style(&cell, false);
+        let style = cell_style(&cell, false, None);
         assert_eq!(style.fg, Some(Color::Rgb(255, 255, 255)));
         assert_eq!(style.bg, Some(Color::Rgb(255, 0, 0)));
     }
@@ -245,7 +272,7 @@ mod tests {
         let white = RGBA::new(1.0, 1.0, 1.0, 1.0);
         let mut cell = plain_cell('A', white, red);
         cell.reverse = true;
-        let style = cell_style(&cell, false);
+        let style = cell_style(&cell, false, None);
         assert_eq!(style.fg, Some(Color::Rgb(255, 0, 0)));
         assert_eq!(style.bg, Some(Color::Rgb(255, 255, 255)));
     }
@@ -255,7 +282,7 @@ mod tests {
         let red = RGBA::new(1.0, 0.0, 0.0, 1.0);
         let white = RGBA::new(1.0, 1.0, 1.0, 1.0);
         let cell = plain_cell('A', white, red);
-        let style = cell_style(&cell, true);
+        let style = cell_style(&cell, true, None);
         assert_eq!(style.fg, Some(Color::Rgb(255, 0, 0)));
         assert_eq!(style.bg, Some(Color::Rgb(255, 255, 255)));
     }
@@ -266,7 +293,7 @@ mod tests {
         let white = RGBA::new(1.0, 1.0, 1.0, 1.0);
         let mut cell = plain_cell('A', white, red);
         cell.reverse = true;
-        let style = cell_style(&cell, true);
+        let style = cell_style(&cell, true, None);
         assert_eq!(style.fg, Some(Color::Rgb(255, 255, 255)));
         assert_eq!(style.bg, Some(Color::Rgb(255, 0, 0)));
     }
@@ -279,7 +306,7 @@ mod tests {
         cell.bold = true;
         cell.italic = true;
         cell.underline = true;
-        let style = cell_style(&cell, false);
+        let style = cell_style(&cell, false, None);
         assert!(style.add_modifier.contains(Modifier::BOLD));
         assert!(style.add_modifier.contains(Modifier::ITALIC));
         assert!(style.add_modifier.contains(Modifier::UNDERLINED));
@@ -325,7 +352,7 @@ mod tests {
         cell.dim = true;
         cell.strikethrough = true;
         cell.hidden = true;
-        let style = cell_style(&cell, false);
+        let style = cell_style(&cell, false, None);
         assert!(style.add_modifier.contains(Modifier::DIM));
         assert!(style.add_modifier.contains(Modifier::CROSSED_OUT));
         assert!(style.add_modifier.contains(Modifier::HIDDEN));

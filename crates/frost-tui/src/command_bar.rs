@@ -6,9 +6,9 @@ use ratatui::{
     widgets::{Block, Borders, Widget},
 };
 
-use frost_core::ResolvedTheme;
 use crate::state::Focus;
 use crate::theme_adapter::to_color;
+use frost_core::ResolvedTheme;
 
 /// Render the command bar with shortcuts and running count.
 pub struct CommandBar<'a> {
@@ -19,7 +19,10 @@ pub struct CommandBar<'a> {
 
 impl<'a> Widget for CommandBar<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let border_color = self.theme.map(|t| to_color(t.border)).unwrap_or(ratatui::style::Color::Yellow);
+        let border_color = self
+            .theme
+            .map(|t| to_color(t.border))
+            .unwrap_or(ratatui::style::Color::Yellow);
         let block = Block::default()
             .title(" Command Bar ")
             .borders(Borders::ALL)
@@ -27,9 +30,18 @@ impl<'a> Widget for CommandBar<'a> {
         let inner = block.inner(area);
         block.render(area, buf);
 
-        let key_color = self.theme.map(|t| to_color(t.accent)).unwrap_or(ratatui::style::Color::Yellow);
-        let desc_color = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::Gray);
-        let success_color = self.theme.map(|t| to_color(t.success)).unwrap_or(ratatui::style::Color::Green);
+        let key_color = self
+            .theme
+            .map(|t| to_color(t.accent))
+            .unwrap_or(ratatui::style::Color::Yellow);
+        let desc_color = self
+            .theme
+            .map(|t| to_color(t.text_muted))
+            .unwrap_or(ratatui::style::Color::Gray);
+        let success_color = self
+            .theme
+            .map(|t| to_color(t.success))
+            .unwrap_or(ratatui::style::Color::Green);
 
         let key_style = Style::default().fg(key_color).add_modifier(Modifier::BOLD);
         let label_style = Style::default().fg(desc_color);
@@ -63,7 +75,9 @@ impl<'a> Widget for CommandBar<'a> {
             Span::styled("Running: ", Style::default().fg(desc_color)),
             Span::styled(
                 self.running_count.to_string(),
-                Style::default().fg(success_color).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(success_color)
+                    .add_modifier(Modifier::BOLD),
             ),
         ];
 

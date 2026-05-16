@@ -6,9 +6,9 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Widget},
 };
 
-use frost_core::ResolvedTheme;
 use crate::sidebar::TreeItem;
 use crate::theme_adapter::to_color;
+use frost_core::ResolvedTheme;
 
 /// Render the search overlay with fuzzy-filtered tree items.
 pub struct SearchDialog<'a> {
@@ -64,7 +64,10 @@ impl<'a> Widget for SearchDialog<'a> {
         let overlay_area = center_rect(area, 50, 14);
         Clear.render(overlay_area, buf);
 
-        let border_color = self.theme.map(|t| to_color(t.accent)).unwrap_or(ratatui::style::Color::Cyan);
+        let border_color = self
+            .theme
+            .map(|t| to_color(t.accent))
+            .unwrap_or(ratatui::style::Color::Cyan);
         let block = Block::default()
             .title(" Search ")
             .borders(Borders::ALL)
@@ -72,12 +75,27 @@ impl<'a> Widget for SearchDialog<'a> {
         let inner = block.inner(overlay_area);
         block.render(overlay_area, buf);
 
-        let placeholder_color = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::DarkGray);
-        let text_color = self.theme.map(|t| to_color(t.text)).unwrap_or(ratatui::style::Color::White);
-        let divider_color = self.theme.map(|t| to_color(t.border)).unwrap_or(ratatui::style::Color::DarkGray);
+        let placeholder_color = self
+            .theme
+            .map(|t| to_color(t.text_muted))
+            .unwrap_or(ratatui::style::Color::DarkGray);
+        let text_color = self
+            .theme
+            .map(|t| to_color(t.text))
+            .unwrap_or(ratatui::style::Color::White);
+        let divider_color = self
+            .theme
+            .map(|t| to_color(t.border))
+            .unwrap_or(ratatui::style::Color::DarkGray);
         let selected_bg = self.theme.map(|t| to_color(t.background_panel));
-        let selected_fg = self.theme.map(|t| to_color(t.text)).unwrap_or(ratatui::style::Color::White);
-        let unselected_fg = self.theme.map(|t| to_color(t.text_muted)).unwrap_or(ratatui::style::Color::Gray);
+        let selected_fg = self
+            .theme
+            .map(|t| to_color(t.text))
+            .unwrap_or(ratatui::style::Color::White);
+        let unselected_fg = self
+            .theme
+            .map(|t| to_color(t.text_muted))
+            .unwrap_or(ratatui::style::Color::Gray);
 
         // Filter input.
         let filter_text = if self.filter.is_empty() {
@@ -115,7 +133,9 @@ impl<'a> Widget for SearchDialog<'a> {
             let row = list_area.y + i as u16;
             let is_selected = i == self.selected;
             let style = if is_selected {
-                let mut s = Style::default().fg(selected_fg).add_modifier(Modifier::BOLD);
+                let mut s = Style::default()
+                    .fg(selected_fg)
+                    .add_modifier(Modifier::BOLD);
                 if let Some(c) = selected_bg {
                     s = s.bg(c);
                 } else {
