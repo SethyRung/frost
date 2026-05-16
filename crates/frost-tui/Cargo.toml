@@ -1,0 +1,18 @@
+[package]
+name = "frost-tui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "frost"
+path = "src/main.rs"
+
+[dependencies]
+frost-core = { path = "../frost-core" }
+ratatui = "0.29"
+crossterm = "0.29"
+tokio = { version = "1.44", features = ["full"] }
+
+[dev-dependencies]
