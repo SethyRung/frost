@@ -107,6 +107,10 @@ pub struct TerminalColors {
 }
 
 impl RGBA {
+    pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+        Self { r, g, b, a }
+    }
+
     pub const TRANSPARENT: RGBA = RGBA {
         r: 0.0,
         g: 0.0,

@@ -716,11 +716,11 @@ The `frost-core` crate enables this — the CLI is just another consumer.
 
 ### Phase 2 — Process Management
 
-- [ ] `frost-core/src/process/pty.rs` — PTY spawning (`portable-pty` + `setsid`), process group kill
-- [ ] `frost-core/src/process/manager.rs` — start/stop/restart with `alacritty_terminal::Term` per process
-- [ ] Screen update broadcast channel (`tokio::sync::broadcast`) — TUI re-renders on terminal output
-- [ ] PTY resize on terminal window size change
-- [ ] Integration test: spawn real process via PTY, feed output to terminal emulator, kill process group
+- [x] `frost-core/src/process/pty.rs` — PTY spawning (`portable-pty` + `setsid`), process group kill
+- [x] `frost-core/src/process/manager.rs` — start/stop/restart with `alacritty_terminal::Term` per process
+- [x] Screen update broadcast channel (`tokio::sync::broadcast`) — TUI re-renders on terminal output
+- [x] PTY resize on terminal window size change
+- [x] Integration test: spawn real process via PTY, feed output to terminal emulator, kill process group
 
 ### Phase 3 — TUI Shell
 
