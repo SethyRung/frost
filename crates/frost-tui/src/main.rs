@@ -1,6 +1,7 @@
 use std::io;
+use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event},
     execute,
@@ -9,17 +10,29 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc;
 
-use frost_core::ProcessManager;
+use frost_core::{ProcessManager, find_config, load_config};
 
 use crate::{actions::Action, app::App};
 
 mod actions;
 mod app;
+mod command_bar;
 mod input;
+mod log_viewer;
+mod palette;
+mod search;
+mod sidebar;
 mod state;
+mod theme_dialog;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Find and load config.
+    let config_path = find_config(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+        .context("No frost.toml found — run from a project with a frost.toml")?;
+    let config = load_config(&config_path)
+        .with_context(|| format!("Failed to load config from {:?}", config_path))?;
+
     // Set up terminal.
     let mut terminal = setup_terminal()?;
 
@@ -27,7 +40,7 @@ async fn main() -> Result<()> {
     let process_manager = ProcessManager::new();
 
     // Run the app.
-    let result = run_app(&mut terminal, process_manager).await;
+    let result = run_app(&mut terminal, process_manager, config, config_path).await;
 
     // Restore terminal regardless of result.
     restore_terminal(&mut terminal)?;
@@ -64,8 +77,6 @@ fn spawn_event_reader(tx: mpsc::UnboundedSender<Event>) {
         loop {
             match crossterm::event::read() {
                 Ok(event) => {
-                    // Detect Ctrl+C before sending so we can break the thread
-                    // after the event has been delivered.
                     let is_ctrl_c = matches!(
                         event,
                         Event::Key(k)
@@ -73,7 +84,7 @@ fn spawn_event_reader(tx: mpsc::UnboundedSender<Event>) {
                                 && k.modifiers.contains(KeyModifiers::CONTROL)
                     );
                     if tx.send(event).is_err() {
-                        break; // Receiver dropped → exit thread.
+                        break;
                     }
                     if is_ctrl_c {
                         break;
@@ -89,8 +100,10 @@ fn spawn_event_reader(tx: mpsc::UnboundedSender<Event>) {
 async fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     process_manager: ProcessManager,
+    config: frost_core::FrostConfig,
+    config_path: PathBuf,
 ) -> Result<()> {
-    let mut app = App::new(process_manager);
+    let mut app = App::new(process_manager, config, config_path);
 
     // Crossterm events arrive via a dedicated thread → tokio channel.
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<Event>();
@@ -106,7 +119,8 @@ async fn run_app(
         // Wait for the next event or tick.
         tokio::select! {
             Some(event) = event_rx.recv() => {
-                if let Some(action) = input::handle_event(event) {
+                let overlay = app.state.overlay;
+                if let Some(action) = input::handle_event(event, overlay) {
                     app.handle_action(action);
                 }
             }

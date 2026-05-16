@@ -733,12 +733,12 @@ The `frost-core` crate enables this — the CLI is just another consumer.
 
 ### Phase 4 — Widgets
 
-- [ ] `sidebar.rs` — project/app/sub-command tree with expand/collapse + status icons; only one sub-command runs per app at a time; selecting a different sub-command stops current + starts new
-- [ ] `log_viewer.rs` — terminal emulator widget: reads `Term` grid, renders as ratatui `Line`/`Span` with styles, auto-scroll to bottom, scrollback history navigation, PTY resize on layout change
-- [ ] `command_bar.rs` — shortcuts + running count
-- [ ] `palette.rs` — CommandPalette with filter + action dispatch
-- [ ] `search.rs` — SearchDialog with fuzzy filter
-- [ ] `theme_dialog.rs` — Theme switcher with viewport scroll + live preview
+- [x] `sidebar.rs` — project/app/sub-command tree with expand/collapse + status icons; only one sub-command runs per app at a time; selecting a different sub-command stops current + starts new
+- [x] `log_viewer.rs` — terminal emulator widget: reads `Term` grid, renders as ratatui `Line`/`Span` with styles, auto-scroll to bottom, scrollback history navigation, PTY resize on layout change
+- [x] `command_bar.rs` — shortcuts + running count
+- [x] `palette.rs` — CommandPalette with filter + action dispatch
+- [x] `search.rs` — SearchDialog with fuzzy filter
+- [x] `theme_dialog.rs` — Theme switcher with viewport scroll + live preview
 
 ### Phase 5 — Polish
 

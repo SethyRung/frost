@@ -7,4 +7,26 @@ pub enum Action {
     Quit,
     /// Terminal window was resized.
     Resize { width: u16, height: u16 },
+    /// Move selection up in the sidebar tree.
+    Up,
+    /// Move selection down in the sidebar tree.
+    Down,
+    /// Toggle expand/collapse (project/app) or start/stop (subcommand).
+    Toggle,
+
+    // Overlays
+    /// Open the command palette.
+    OpenPalette,
+    /// Open the search dialog.
+    OpenSearch,
+    /// Close any open overlay.
+    CloseOverlay,
+    /// Confirm selection in an overlay (Enter when overlay is open).
+    Confirm,
+    /// Append a character to the overlay filter text.
+    FilterChar(char),
+    /// Backspace in the overlay filter text.
+    FilterBackspace,
+    /// Clear the overlay filter text.
+    FilterClear,
 }

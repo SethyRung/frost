@@ -1,0 +1,23 @@
+[projects.portfolio]
+workdir = "../portfolio"
+
+[projects.portfolio.apps.frontend]
+command = "pnpm dev"
+
+[projects.chongkran]
+workdir = "../Chongkran"
+
+[projects.chongkran.apps.chongkran-frontend]
+workdir = "chongkran-frontend"
+command = "pnpm dev"
+
+[projects.chongkran.apps.chongkran-backend]
+workdir = "chongkran-backend"
+command = "pnpm start:dev"
+
+[projects."web bridge"]
+workdir = "../WebBridge"
+
+[projects."web bridge".apps.glitch]
+workdir = "/glitch"
+command = "pnpm dev"

@@ -4,7 +4,11 @@ pub mod state;
 pub mod theme;
 
 // Re-export commonly used items
-pub use config::{flatten_config, find_config, load_config, ConfigError, RuntimeCommand};
+pub use config::{
+    flatten_config, find_config, load_config,
+    schema::{AppConfig, FrostConfig, ProjectConfig, SubCommand},
+    ConfigError, RuntimeCommand,
+};
 pub use process::{
     manager::ProcessManager,
     types::{DisplayLine, ProcessInfo, ProcessStatus, ScreenUpdate, StateEvent, TerminalCell},
